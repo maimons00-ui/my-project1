@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעקב מניות ישראליות - Israeli Stocks Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 28px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .popular-stocks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            align-items: center;
+        }
+
+        .stock-chip {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stock-chip:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .tracked-stocks {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .tracked-stocks h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .stock-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tracked-stock-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .tracked-stock-item .symbol {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .tracked-stock-item .price {
+            font-weight: 600;
+        }
+
+        .tracked-stock-item .change {
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .stock-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+
+        .info-card h3 {
+            color: #495057;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #212529;
+        }
+
+        .info-card .change {
+            font-size: 1.2em;
+            margin-top: 5px;
+        }
+
+        .positive {
+            color: #28a745;
+        }
+
+        .negative {
+            color: #dc3545;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .chart-type-btn {
+            padding: 8px 16px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .chart-type-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .chart-type-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .time-range {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            padding: 8px 20px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .time-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .time-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .comparison-mode {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            border: 2px solid #ffc107;
+        }
+
+        .comparison-stocks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .search-box {
+                flex-direction: column;
+            }
+            .btn {
+                width: 100%;
+                margin-top: 0;
+            }
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 מעקב מניות ישראליות</h1>
+            <p>מערכת מעקב אינטראקטיבית למניות הבורסה בתל אביב</p>
+        </div>
+
+        <div class="controls">
+            <div class="search-box">
+                <div class="input-group">
+                    <label for="stockSymbol">סמל המניה (לדוגמה: TA35, TEVA, NICE)</label>
+                    <input type="text" id="stockSymbol" placeholder="הכנס סמל מניה" value="TA35">
+                </div>
+                <button class="btn btn-primary" onclick="loadStock()">טען מניה</button>
+                <button class="btn btn-secondary" onclick="addToTracked()">הוסף למעקב</button>
+            </div>
+
+            <div class="popular-stocks">
+                <span style="margin-left: 10px; font-weight: 600; color: #495057;">מניות פופולריות:</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('TA35')">TA35</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('TEVA')">TEVA</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('NICE')">NICE</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('CKFR')">CKFR</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('MZTF')">MZTF</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('ESLT')">ESLT</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('BEZQ')">BEZQ</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('POLI')">POLI</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('BCOM')">BCOM</span>
+                <span class="stock-chip" onclick="loadStockBySymbol('ICL')">ICL</span>
+            </div>
+
+            <div class="tracked-stocks" id="trackedStocksContainer" style="display: none;">
+                <h3>מניות במעקב:</h3>
+                <div class="stock-list" id="trackedStocksList"></div>
+            </div>
+
+            <div class="time-range">
+                <button class="time-btn active" onclick="setTimeRange('1d')" data-range="1d">יום</button>
+                <button class="time-btn" onclick="setTimeRange('5d')" data-range="5d">5 ימים</button>
+                <button class="time-btn" onclick="setTimeRange('1mo')" data-range="1mo">חודש</button>
+                <button class="time-btn" onclick="setTimeRange('3mo')" data-range="3mo">3 חודשים</button>
+                <button class="time-btn" onclick="setTimeRange('6mo')" data-range="6mo">6 חודשים</button>
+                <button class="time-btn" onclick="setTimeRange('1y')" data-range="1y">שנה</button>
+                <button class="time-btn" onclick="setTimeRange('2y')" data-range="2y">שנתיים</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="errorMessage"></div>
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                טוען נתונים...
+            </div>
+            
+            <div id="stockInfo" class="stock-info" style="display: none;">
+                <div class="info-card">
+                    <h3>מחיר נוכחי</h3>
+                    <div class="value" id="currentPrice">-</div>
+                    <div class="change" id="priceChange">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>שינוי יומי</h3>
+                    <div class="value" id="dailyChange">-</div>
+                    <div class="change" id="dailyChangePercent">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>גבוה היום</h3>
+                    <div class="value" id="highPrice">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>נמוך היום</h3>
+                    <div class="value" id="lowPrice">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>נפח</h3>
+                    <div class="value" id="volume">-</div>
+                </div>
+                <div class="info-card">
+                    <h3>מחיר פתיחה</h3>
+                    <div class="value" id="openPrice">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-controls">
+                    <button class="chart-type-btn active" onclick="setChartType('line')" data-type="line">קו</button>
+                    <button class="chart-type-btn" onclick="setChartType('candlestick')" data-type="candlestick">נרות</button>
+                    <button class="chart-type-btn" onclick="setChartType('area')" data-type="area">אזור</button>
+                    <button class="chart-type-btn" onclick="toggleComparison()" id="comparisonBtn">השוואה</button>
+                </div>
+                <canvas id="stockChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let currentSymbol = 'TA35';
+        let currentRange = '1mo';
+        let currentChartType = 'line';
+        let comparisonMode = false;
+        let trackedStocks = JSON.parse(localStorage.getItem('trackedStocks') || '[]');
+        let stockData = {};
+
+        // Israeli stocks mapping
+        const israeliStocks = {
+            'TA35': 'TA35.TA',
+            'TEVA': 'TEVA.TA',
+            'NICE': 'NICE.TA',
+            'CKFR': 'CKFR.TA',
+            'MZTF': 'MZTF.TA',
+            'ESLT': 'ESLT.TA',
+            'BEZQ': 'BEZQ.TA',
+            'POLI': 'POLI.TA',
+            'BCOM': 'BCOM.TA',
+            'ICL': 'ICL.TA',
+            'WIX': 'WIX',
+            'MNDY': 'MNDY'
+        };
+
+        function getStockSymbol(symbol) {
+            return israeliStocks[symbol.toUpperCase()] || symbol.toUpperCase() + '.TA';
+        }
+
+        function loadStockBySymbol(symbol) {
+            document.getElementById('stockSymbol').value = symbol;
+            loadStock();
+        }
+
+        function setTimeRange(range) {
+            currentRange = range;
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.range === range) {
+                    btn.classList.add('active');
+                }
+            });
+            if (currentSymbol) {
+                loadStock();
+            }
+        }
+
+        function setChartType(type) {
+            currentChartType = type;
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.type === type) {
+                    btn.classList.add('active');
+                }
+            });
+            if (currentSymbol && stockData[currentSymbol]) {
+                updateChart(stockData[currentSymbol].timestamps, stockData[currentSymbol].prices, currentSymbol);
+            }
+        }
+
+        function toggleComparison() {
+            comparisonMode = !comparisonMode;
+            const btn = document.getElementById('comparisonBtn');
+            if (comparisonMode) {
+                btn.classList.add('active');
+                btn.textContent = 'ביטול השוואה';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = 'השוואה';
+            }
+            if (currentSymbol && stockData[currentSymbol]) {
+                updateChart(stockData[currentSymbol].timestamps, stockData[currentSymbol].prices, currentSymbol);
+            }
+        }
+
+        function addToTracked() {
+            const symbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
+            if (!symbol) {
+                showError('אנא הכנס סמל מניה');
+                return;
+            }
+            
+            if (!trackedStocks.includes(symbol)) {
+                trackedStocks.push(symbol);
+                localStorage.setItem('trackedStocks', JSON.stringify(trackedStocks));
+                updateTrackedStocksDisplay();
+                loadTrackedStock(symbol);
+            }
+        }
+
+        function removeFromTracked(symbol) {
+            trackedStocks = trackedStocks.filter(s => s !== symbol);
+            localStorage.setItem('trackedStocks', JSON.stringify(trackedStocks));
+            updateTrackedStocksDisplay();
+        }
+
+        function updateTrackedStocksDisplay() {
+            const container = document.getElementById('trackedStocksContainer');
+            const list = document.getElementById('trackedStocksList');
+            
+            if (trackedStocks.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            list.innerHTML = '';
+            
+            trackedStocks.forEach(symbol => {
+                const item = document.createElement('div');
+                item.className = 'tracked-stock-item';
+                
+                if (stockData[symbol]) {
+                    const data = stockData[symbol];
+                    const change = data.meta.regularMarketPrice - data.meta.previousClose;
+                    const changePercent = ((change / data.meta.previousClose) * 100).toFixed(2);
+                    const changeClass = change >= 0 ? 'positive' : 'negative';
+                    
+                    item.innerHTML = `
+                        <span class="symbol">${symbol}</span>
+                        <span class="price">${formatNumber(data.meta.regularMarketPrice)}</span>
+                        <span class="change ${changeClass}">${change >= 0 ? '+' : ''}${changePercent}%</span>
+                        <button class="btn btn-danger" style="padding: 4px 10px; margin: 0; font-size: 0.8em;" onclick="removeFromTracked('${symbol}')">הסר</button>
+                        <button class="btn btn-primary" style="padding: 4px 10px; margin: 0; font-size: 0.8em;" onclick="loadStockBySymbol('${symbol}')">טען</button>
+                    `;
+                } else {
+                    item.innerHTML = `
+                        <span class="symbol">${symbol}</span>
+                        <span>טוען...</span>
+                        <button class="btn btn-danger" style="padding: 4px 10px; margin: 0; font-size: 0.8em;" onclick="removeFromTracked('${symbol}')">הסר</button>
+                    `;
+                }
+                
+                list.appendChild(item);
+            });
+        }
+
+        async function loadTrackedStock(symbol) {
+            const fullSymbol = getStockSymbol(symbol);
+            try {
+                let quoteUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${fullSymbol}?interval=1d&range=1mo`;
+                
+                let response = await fetch(quoteUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                // If CORS fails, try with a proxy
+                if (!response.ok || response.status === 0) {
+                    quoteUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(quoteUrl)}`;
+                    response = await fetch(quoteUrl);
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.chart && data.chart.result && data.chart.result.length > 0) {
+                        const result = data.chart.result[0];
+                        if (result.meta && result.timestamp && result.indicators && 
+                            result.indicators.quote && result.indicators.quote[0] &&
+                            result.indicators.quote[0].close && result.indicators.quote[0].close.length > 0) {
+                            stockData[symbol] = {
+                                meta: result.meta,
+                                timestamps: result.timestamp,
+                                prices: result.indicators.quote[0]
+                            };
+                            updateTrackedStocksDisplay();
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`Error loading tracked stock ${symbol}:`, error);
+                // Don't show error for tracked stocks to avoid spam
+            }
+        }
+
+        async function loadStock() {
+            const symbol = document.getElementById('stockSymbol').value.trim();
+            if (!symbol) {
+                showError('אנא הכנס סמל מניה');
+                return;
+            }
+
+            currentSymbol = symbol.toUpperCase();
+            const fullSymbol = getStockSymbol(currentSymbol);
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('errorMessage').innerHTML = '';
+            document.getElementById('stockInfo').style.display = 'none';
+
+            try {
+                // Try direct API first, then fallback to CORS proxy if needed
+                let quoteUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${fullSymbol}?interval=1d&range=${currentRange}`;
+                
+                let response = await fetch(quoteUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                // If CORS fails, try with a proxy
+                if (!response.ok || response.status === 0) {
+                    quoteUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(quoteUrl)}`;
+                    response = await fetch(quoteUrl);
+                }
+                if (!response.ok) {
+                    throw new Error(`שגיאה בטעינת הנתונים: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+                    throw new Error('לא נמצאו נתונים עבור המניה הזו');
+                }
+
+                const result = data.chart.result[0];
+                
+                // Validate data
+                if (!result.meta || !result.timestamp || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) {
+                    throw new Error('נתונים לא תקינים מהשרת');
+                }
+
+                const meta = result.meta;
+                const timestamps = result.timestamp;
+                const prices = result.indicators.quote[0];
+
+                // Validate prices array
+                if (!prices.close || prices.close.length === 0 || prices.close.every(p => p === null)) {
+                    throw new Error('אין נתוני מחירים זמינים');
+                }
+
+                // Store data
+                stockData[currentSymbol] = { meta, timestamps, prices };
+
+                // Update stock info
+                updateStockInfo(meta, prices);
+                
+                // Update chart
+                updateChart(timestamps, prices, meta.symbol || currentSymbol);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('stockInfo').style.display = 'grid';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loading').style.display = 'none';
+                
+                let errorMessage = 'שגיאה בטעינת הנתונים. ';
+                const errorMsg = error.message || error.toString();
+                
+                if (errorMsg.includes('CORS') || errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+                    errorMessage += 'בעיית CORS - המערכת מנסה להשתמש ב-proxy. אם הבעיה נמשכת, נסה לפתוח את הקובץ דרך שרת מקומי (python -m http.server) או השתמש בהרחבה לדפדפן לביטול CORS.';
+                } else if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+                    errorMessage += 'המניה לא נמצאה. נסה סמל אחר (לדוגמה: TA35, TEVA, NICE).';
+                } else if (errorMsg.includes('נתונים לא תקינים') || errorMsg.includes('אין נתוני מחירים')) {
+                    errorMessage = errorMsg;
+                } else {
+                    errorMessage += errorMsg || 'אנא נסה שוב או נסה מניה אחרת.';
+                }
+                
+                showError(errorMessage);
+                
+                // Clear chart if there's an error
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+            }
+        }
+
+        function updateStockInfo(meta, prices) {
+            if (!meta) {
+                console.error('No meta data available');
+                return;
+            }
+
+            const currentPrice = meta.regularMarketPrice || meta.previousClose || meta.chartPreviousClose || 0;
+            const previousClose = meta.previousClose || meta.chartPreviousClose || currentPrice || 0;
+            const change = currentPrice - previousClose;
+            const changePercent = previousClose && previousClose !== 0 ? ((change / previousClose) * 100).toFixed(2) : '0.00';
+            
+            const high = meta.regularMarketDayHigh || meta.previousClose || currentPrice || 0;
+            const low = meta.regularMarketDayLow || meta.previousClose || currentPrice || 0;
+            const volume = meta.regularMarketVolume || 0;
+            const open = meta.regularMarketOpen || meta.previousClose || currentPrice || 0;
+
+            try {
+                document.getElementById('currentPrice').textContent = formatNumber(currentPrice);
+                document.getElementById('priceChange').textContent = `${change >= 0 ? '+' : ''}${formatNumber(change)} (${changePercent >= 0 ? '+' : ''}${changePercent}%)`;
+                document.getElementById('priceChange').className = `change ${change >= 0 ? 'positive' : 'negative'}`;
+
+                document.getElementById('dailyChange').textContent = `${change >= 0 ? '+' : ''}${formatNumber(change)}`;
+                document.getElementById('dailyChange').className = `value ${change >= 0 ? 'positive' : 'negative'}`;
+                document.getElementById('dailyChangePercent').textContent = `${changePercent >= 0 ? '+' : ''}${changePercent}%`;
+                document.getElementById('dailyChangePercent').className = `change ${changePercent >= 0 ? 'positive' : 'negative'}`;
+
+                document.getElementById('highPrice').textContent = formatNumber(high);
+                document.getElementById('lowPrice').textContent = formatNumber(low);
+                document.getElementById('volume').textContent = formatVolume(volume);
+                document.getElementById('openPrice').textContent = formatNumber(open);
+            } catch (error) {
+                console.error('Error updating stock info:', error);
+            }
+        }
+
+        function updateChart(timestamps, prices, symbol) {
+            // Validate inputs
+            if (!timestamps || !prices || !prices.close) {
+                console.error('Invalid data for chart');
+                return;
+            }
+
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            
+            const labels = timestamps.map(ts => {
+                const date = new Date(ts * 1000);
+                return date.toLocaleDateString('he-IL', { month: 'short', day: 'numeric' });
+            });
+
+            let datasets = [];
+            let chartLabels = [];
+            
+            if (comparisonMode && trackedStocks.length > 0) {
+                // Comparison mode - show multiple stocks
+                const colors = [
+                    'rgb(102, 126, 234)',
+                    'rgb(255, 99, 132)',
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 205, 86)',
+                    'rgb(153, 102, 255)'
+                ];
+                
+                trackedStocks.forEach((trackedSymbol, index) => {
+                    if (stockData[trackedSymbol] && stockData[trackedSymbol].prices && stockData[trackedSymbol].prices.close) {
+                        const data = stockData[trackedSymbol];
+                        const closePrices = data.prices.close.filter(p => p !== null && p !== undefined);
+                        if (closePrices.length > 0) {
+                            const dataLabels = data.timestamps.map(ts => {
+                                const date = new Date(ts * 1000);
+                                return date.toLocaleDateString('he-IL', { month: 'short', day: 'numeric' });
+                            }).slice(-closePrices.length);
+                            
+                            if (chartLabels.length === 0) {
+                                chartLabels = dataLabels;
+                            }
+                            
+                            datasets.push({
+                                label: trackedSymbol,
+                                data: closePrices,
+                                borderColor: colors[index % colors.length],
+                                backgroundColor: colors[index % colors.length] + '20',
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 6
+                            });
+                        }
+                    }
+                });
+                
+                if (datasets.length === 0) {
+                    showError('אין נתונים להשוואה. הוסף מניות למעקב תחילה.');
+                    return;
+                }
+            } else {
+                // Single stock mode
+                const closePrices = prices.close.filter(p => p !== null && p !== undefined);
+                
+                if (closePrices.length === 0) {
+                    showError('אין נתוני מחירים זמינים להצגה');
+                    return;
+                }
+                
+                const validLabels = labels.slice(-closePrices.length);
+                chartLabels = validLabels;
+                
+                let chartConfig = {
+                    label: symbol,
+                    data: closePrices,
+                    borderColor: 'rgb(102, 126, 234)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: 'rgb(102, 126, 234)',
+                    pointHoverBorderColor: 'white',
+                    pointHoverBorderWidth: 2
+                };
+
+                if (currentChartType === 'area') {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(102, 126, 234, 0.3)');
+                    gradient.addColorStop(1, 'rgba(102, 126, 234, 0.0)');
+                    chartConfig.backgroundColor = gradient;
+                    chartConfig.fill = true;
+                } else if (currentChartType === 'candlestick') {
+                    // Simple candlestick representation using high-low bars
+                    chartConfig = {
+                        label: symbol + ' (High-Low)',
+                        data: closePrices.map((close, i) => ({
+                            x: validLabels[i],
+                            y: [prices.low && prices.low[i] !== null ? prices.low[i] : close, 
+                                prices.high && prices.high[i] !== null ? prices.high[i] : close, 
+                                close]
+                        })),
+                        borderColor: 'rgb(102, 126, 234)',
+                        borderWidth: 2
+                    };
+                }
+
+                datasets.push(chartConfig);
+            }
+
+            if (datasets.length === 0) {
+                showError('אין נתונים להצגה בגרף');
+                return;
+            }
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: currentChartType === 'candlestick' ? 'bar' : 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    if (Array.isArray(context.parsed.y)) {
+                                        return `נמוך: ${formatNumber(context.parsed.y[0])}, גבוה: ${formatNumber(context.parsed.y[1])}, סגירה: ${formatNumber(context.parsed.y[2])}`;
+                                    }
+                                    return `${context.dataset.label}: ${formatNumber(context.parsed.y)}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatNumber(value);
+                                },
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 15,
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '-';
+            return new Intl.NumberFormat('he-IL', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        function formatVolume(num) {
+            if (num === null || num === undefined) return '-';
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(2) + 'K';
+            }
+            return num.toLocaleString('he-IL');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Load default stock on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStock();
+            
+            // Load tracked stocks
+            trackedStocks.forEach(symbol => {
+                loadTrackedStock(symbol);
+            });
+            updateTrackedStocksDisplay();
+            
+            // Allow Enter key to trigger search
+            document.getElementById('stockSymbol').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadStock();
+                }
+            });
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(() => {
+            if (currentSymbol) {
+                loadStock();
+            }
+            trackedStocks.forEach(symbol => {
+                loadTrackedStock(symbol);
+            });
+        }, 300000);
+    </script>
+</body>
+</html>

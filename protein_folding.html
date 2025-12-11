@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ויזואליזציית קיפול חלבונים אינטראקטיבית</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Heebo:wght@300;400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0d1f2d 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #e0e0e0;
+        }
+        
+        .background-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 136, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 128, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(0, 200, 255, 0.02) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            animation: fadeInDown 1s ease-out;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #00ff88, #00d4ff, #ff0080);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 50px rgba(0, 255, 136, 0.3);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #8892b0;
+            font-weight: 300;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .canvas-container {
+            background: rgba(15, 25, 40, 0.9);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 0 50px rgba(0, 255, 136, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 700px;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        .canvas-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: #00ff88;
+            font-family: 'Orbitron', sans-serif;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .controls-panel {
+            background: rgba(15, 25, 40, 0.95);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .controls-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .controls-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        .controls-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.3);
+            border-radius: 4px;
+        }
+        
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: #00d4ff;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 22px;
+        }
+        
+        .control-label {
+            display: block;
+            font-size: 0.95rem;
+            color: #a8b2d1;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            flex: 1;
+            height: 8px;
+            background: linear-gradient(90deg, #1a1a3a, #2a2a4a);
+            border-radius: 4px;
+            outline: none;
+            position: relative;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+            transition: transform 0.2s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 14px 18px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            color: #0a0a1a;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 0, 128, 0.2);
+            border: 2px solid #ff0080;
+            color: #ff0080;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 0, 128, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 0, 128, 0.3);
+        }
+        
+        .btn-full {
+            grid-column: span 2;
+        }
+        
+        .sequence-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(26, 26, 58, 0.9);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            color: #00ff88;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            resize: none;
+            height: 90px;
+            transition: all 0.3s;
+        }
+        
+        .sequence-input:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+            background: rgba(26, 26, 58, 1);
+        }
+        
+        .legend {
+            margin-top: 25px;
+            padding-top: 18px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .legend-title {
+            font-size: 0.95rem;
+            color: #a8b2d1;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            font-size: 0.88rem;
+            padding: 6px;
+            border-radius: 6px;
+            transition: background 0.3s;
+        }
+        
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .legend-color {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            box-shadow: 0 0 12px currentColor;
+            flex-shrink: 0;
+        }
+        
+        .hydrophobic { background: #ff6b6b; color: #ff6b6b; }
+        .hydrophilic { background: #4ecdc4; color: #4ecdc4; }
+        .charged-pos { background: #45b7d1; color: #45b7d1; }
+        .charged-neg { background: #f7dc6f; color: #f7dc6f; }
+        .special { background: #bb8fce; color: #bb8fce; }
+        
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 18px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: #8892b0;
+        }
+        
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            color: #00d4ff;
+            font-weight: 700;
+        }
+        
+        .structure-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .struct-btn {
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #a8b2d1;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .struct-btn:hover, .struct-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        
+        .folding-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(0, 255, 136, 0.15);
+            border-radius: 10px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .indicator-dot {
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1.2s infinite;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        
+        .indicator-dot.paused {
+            background: #ff0080;
+            animation: none;
+            box-shadow: 0 0 10px #ff0080;
+        }
+        
+        .indicator-text {
+            font-size: 0.9rem;
+            color: #00ff88;
+            font-weight: 600;
+        }
+        
+        .indicator-text.paused {
+            color: #ff0080;
+        }
+        
+        .info-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff88;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            z-index: 1000;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .controls-panel {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-pattern"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🧬 קיפול חלבונים אינטראקטיבי</h1>
+            <p class="subtitle">סימולציה תלת-מימדית של תהליך הקיפול המולקולרי</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="canvas-container">
+                <canvas id="proteinCanvas"></canvas>
+                <div class="canvas-overlay">
+                    <div>Frame: <span id="frameCounter">0</span></div>
+                    <div style="font-size: 0.75rem; color: #8892b0; margin-top: 4px;">
+                        גרור לסיבוב • גלילה לזום
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls-panel">
+                <h2 class="panel-title">⚙️ לוח בקרה</h2>
+                
+                <div class="folding-indicator">
+                    <div class="indicator-dot" id="indicatorDot"></div>
+                    <span class="indicator-text" id="indicatorText">מוכן להתחלה</span>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="startBtn">▶ התחל</button>
+                    <button class="btn btn-secondary" id="resetBtn">↺ איפוס</button>
+                    <button class="btn btn-primary btn-full" id="randomBtn">🎲 רצף אקראי</button>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">רצף חומצות אמינו:</label>
+                    <textarea class="sequence-input" id="sequenceInput" placeholder="הכנס רצף (לדוגמה: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERM)">MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR</textarea>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">מהירות קיפול:</label>
+                    <div class="slider-container">
+                        <input type="range" id="speedSlider" min="1" max="100" value="50">
+                        <span class="slider-value" id="speedValue">50</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">טמפרטורה (K):</label>
+                    <div class="slider-container">
+                        <input type="range" id="tempSlider" min="100" max="500" value="300">
+                        <span class="slider-value" id="tempValue">300</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">חוזק אינטראקציה:</label>
+                    <div class="slider-container">
+                        <input type="range" id="interactionSlider" min="1" max="100" value="50">
+                        <span class="slider-value" id="interactionValue">50</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">תצוגת מבנה:</label>
+                    <div class="structure-buttons">
+                        <button class="struct-btn active" data-view="ribbon">סרט</button>
+                        <button class="struct-btn" data-view="balls">כדורים</button>
+                        <button class="struct-btn" data-view="sticks">מקלות</button>
+                    </div>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stat-item">
+                        <span class="stat-label">אנרגיה:</span>
+                        <span class="stat-value" id="energyValue">0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">רדיוס גירציה:</span>
+                        <span class="stat-value" id="radiusValue">0.00 Å</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">קשרי מימן:</span>
+                        <span class="stat-value" id="hbondsValue">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">אחוז קיפול:</span>
+                        <span class="stat-value" id="foldedValue">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">מספר חומצות:</span>
+                        <span class="stat-value" id="residueCount">0</span>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-title">סוגי חומצות אמינו:</div>
+                    <div class="legend-item">
+                        <div class="legend-color hydrophobic"></div>
+                        <span>הידרופוביות (A,V,L,I,M,F,W)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color hydrophilic"></div>
+                        <span>הידרופיליות (S,T,N,Q,Y)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color charged-pos"></div>
+                        <span>טעונות + (K,R,H)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color charged-neg"></div>
+                        <span>טעונות - (D,E)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color special"></div>
+                        <span>מיוחדות (G,P,C)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Amino Acid Properties
+        const aminoAcids = {
+            'A': { name: 'Alanine', type: 'hydrophobic', color: '#ff6b6b', size: 1 },
+            'V': { name: 'Valine', type: 'hydrophobic', color: '#ff6b6b', size: 1.2 },
+            'L': { name: 'Leucine', type: 'hydrophobic', color: '#ff6b6b', size: 1.3 },
+            'I': { name: 'Isoleucine', type: 'hydrophobic', color: '#ff6b6b', size: 1.3 },
+            'M': { name: 'Methionine', type: 'hydrophobic', color: '#ff6b6b', size: 1.4 },
+            'F': { name: 'Phenylalanine', type: 'hydrophobic', color: '#ff6b6b', size: 1.5 },
+            'W': { name: 'Tryptophan', type: 'hydrophobic', color: '#ff6b6b', size: 1.7 },
+            'S': { name: 'Serine', type: 'hydrophilic', color: '#4ecdc4', size: 1 },
+            'T': { name: 'Threonine', type: 'hydrophilic', color: '#4ecdc4', size: 1.1 },
+            'N': { name: 'Asparagine', type: 'hydrophilic', color: '#4ecdc4', size: 1.2 },
+            'Q': { name: 'Glutamine', type: 'hydrophilic', color: '#4ecdc4', size: 1.3 },
+            'Y': { name: 'Tyrosine', type: 'hydrophilic', color: '#4ecdc4', size: 1.5 },
+            'K': { name: 'Lysine', type: 'charged_pos', color: '#45b7d1', size: 1.4 },
+            'R': { name: 'Arginine', type: 'charged_pos', color: '#45b7d1', size: 1.6 },
+            'H': { name: 'Histidine', type: 'charged_pos', color: '#45b7d1', size: 1.3 },
+            'D': { name: 'Aspartate', type: 'charged_neg', color: '#f7dc6f', size: 1.1 },
+            'E': { name: 'Glutamate', type: 'charged_neg', color: '#f7dc6f', size: 1.2 },
+            'G': { name: 'Glycine', type: 'special', color: '#bb8fce', size: 0.8 },
+            'P': { name: 'Proline', type: 'special', color: '#bb8fce', size: 1.1 },
+            'C': { name: 'Cysteine', type: 'special', color: '#bb8fce', size: 1 }
+        };
+        
+        // Canvas Setup
+        const canvas = document.getElementById('proteinCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas resolution
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // State
+        let residues = [];
+        let isRunning = false;
+        let frame = 0;
+        let rotationX = 0.3;
+        let rotationY = 0;
+        let zoom = 1;
+        let viewMode = 'ribbon';
+        
+        // Parameters
+        let speed = 50;
+        let temperature = 300;
+        let interactionStrength = 50;
+        
+        // Mouse interaction
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        
+        // Residue class
+        class Residue {
+            constructor(aa, index, total) {
+                this.aa = aa;
+                this.index = index;
+                this.props = aminoAcids[aa] || aminoAcids['G'];
+                
+                // Initial linear position (unfolded)
+                this.x = (index - total / 2) * 18;
+                this.y = Math.sin(index * 0.3) * 10;
+                this.z = Math.cos(index * 0.3) * 10;
+                
+                // Target position (folded) - will be calculated
+                this.targetX = 0;
+                this.targetY = 0;
+                this.targetZ = 0;
+                
+                // Velocity
+                this.vx = 0;
+                this.vy = 0;
+                this.vz = 0;
+                
+                // Animation
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+            
+            update(dt, temperature, interactionStrength, residues) {
+                // Thermal motion (Brownian motion)
+                const thermalForce = (temperature / 300) * 0.6;
+                this.vx += (Math.random() - 0.5) * thermalForce;
+                this.vy += (Math.random() - 0.5) * thermalForce;
+                this.vz += (Math.random() - 0.5) * thermalForce;
+                
+                // Attraction to target (folding force)
+                const foldForce = interactionStrength / 400;
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const dz = this.targetZ - this.z;
+                const distToTarget = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                
+                if (distToTarget > 0.1) {
+                    this.vx += (dx / distToTarget) * foldForce;
+                    this.vy += (dy / distToTarget) * foldForce;
+                    this.vz += (dz / distToTarget) * foldForce;
+                }
+                
+                // Inter-residue interactions
+                residues.forEach((other, i) => {
+                    if (i === this.index) return;
+                    
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const dz = other.z - this.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.1;
+                    
+                    // Hydrophobic clustering
+                    if (this.props.type === 'hydrophobic' && other.props.type === 'hydrophobic' && dist < 50) {
+                        const force = (interactionStrength / 1200) / (dist * dist);
+                        this.vx += dx * force;
+                        this.vy += dy * force;
+                        this.vz += dz * force;
+                    }
+                    
+                    // Electrostatic interactions
+                    if ((this.props.type === 'charged_pos' && other.props.type === 'charged_neg') ||
+                        (this.props.type === 'charged_neg' && other.props.type === 'charged_pos')) {
+                        if (dist < 40) {
+                            const force = (interactionStrength / 700) / dist;
+                            this.vx += dx * force;
+                            this.vy += dy * force;
+                            this.vz += dz * force;
+                        }
+                    }
+                    
+                    // Repulsion (steric hindrance)
+                    if (dist < 15) {
+                        const repulsion = 0.8 / (dist * dist);
+                        this.vx -= dx * repulsion;
+                        this.vy -= dy * repulsion;
+                        this.vz -= dz * repulsion;
+                    }
+                    
+                    // Hydrogen bonds (simplified)
+                    if (dist > 8 && dist < 12 && 
+                        (this.props.type === 'hydrophilic' || this.props.type === 'charged_pos' || this.props.type === 'charged_neg') &&
+                        (other.props.type === 'hydrophilic' || other.props.type === 'charged_pos' || other.props.type === 'charged_neg')) {
+                        const hbondForce = (interactionStrength / 1000) / dist;
+                        this.vx += dx * hbondForce;
+                        this.vy += dy * hbondForce;
+                        this.vz += dz * hbondForce;
+                    }
+                });
+                
+                // Backbone constraints (keep peptide bonds)
+                if (this.index > 0) {
+                    const prev = residues[this.index - 1];
+                    const dx = prev.x - this.x;
+                    const dy = prev.y - this.y;
+                    const dz = prev.z - this.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    const targetDist = 14;
+                    const force = (dist - targetDist) * 0.12;
+                    if (dist > 0.1) {
+                        this.vx += (dx / dist) * force;
+                        this.vy += (dy / dist) * force;
+                        this.vz += (dz / dist) * force;
+                    }
+                }
+                
+                if (this.index < residues.length - 1) {
+                    const next = residues[this.index + 1];
+                    const dx = next.x - this.x;
+                    const dy = next.y - this.y;
+                    const dz = next.z - this.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    const targetDist = 14;
+                    const force = (dist - targetDist) * 0.12;
+                    if (dist > 0.1) {
+                        this.vx += (dx / dist) * force;
+                        this.vy += (dy / dist) * force;
+                        this.vz += (dz / dist) * force;
+                    }
+                }
+                
+                // Damping (friction)
+                this.vx *= 0.94;
+                this.vy *= 0.94;
+                this.vz *= 0.94;
+                
+                // Update position
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.z += this.vz * dt;
+                
+                // Update pulse
+                this.pulsePhase += 0.06;
+            }
+            
+            project(centerX, centerY, rotX, rotY, scale) {
+                // Rotate around Y axis
+                let x = this.x * Math.cos(rotY) - this.z * Math.sin(rotY);
+                let z = this.x * Math.sin(rotY) + this.z * Math.cos(rotY);
+                
+                // Rotate around X axis
+                let y = this.y * Math.cos(rotX) - z * Math.sin(rotX);
+                z = this.y * Math.sin(rotX) + z * Math.cos(rotX);
+                
+                // Perspective projection
+                const perspective = 600;
+                const factor = perspective / (perspective + z);
+                
+                return {
+                    x: centerX + x * scale * factor,
+                    y: centerY + y * scale * factor,
+                    z: z,
+                    scale: factor * scale
+                };
+            }
+        }
+        
+        // Initialize protein
+        function initProtein(sequence) {
+            residues = [];
+            sequence = sequence.toUpperCase().replace(/[^A-Z]/g, '');
+            
+            if (sequence.length === 0) {
+                sequence = 'MVLSPADKTNVKAAWGKVGAHAGEYGAEALERM';
+            }
+            
+            for (let i = 0; i < sequence.length; i++) {
+                residues.push(new Residue(sequence[i], i, sequence.length));
+            }
+            
+            // Generate secondary structure
+            generateSecondaryStructure();
+            
+            frame = 0;
+            document.getElementById('residueCount').textContent = residues.length;
+        }
+        
+        function generateSecondaryStructure() {
+            // Create alpha helices and beta sheets
+            let currentY = 0;
+            let helixRadius = 25;
+            let betaOffset = 0;
+            
+            for (let i = 0; i < residues.length; i++) {
+                const r = residues[i];
+                const segment = Math.floor(i / 12);
+                const posInSegment = i % 12;
+                
+                if (segment % 3 === 0) {
+                    // Alpha helix
+                    const helixAngle = posInSegment * (100 * Math.PI / 180);
+                    r.targetX = Math.cos(helixAngle) * helixRadius;
+                    r.targetY = currentY + posInSegment * 4.5;
+                    r.targetZ = Math.sin(helixAngle) * helixRadius;
+                } else if (segment % 3 === 1) {
+                    // Beta strand
+                    r.targetX = (posInSegment - 6) * 10 + betaOffset;
+                    r.targetY = currentY + 30;
+                    r.targetZ = Math.sin(posInSegment * 0.5) * 20;
+                } else {
+                    // Loop/coil
+                    const loopAngle = posInSegment * (Math.PI / 6);
+                    r.targetX = Math.cos(loopAngle) * 30 + betaOffset;
+                    r.targetY = currentY + 15;
+                    r.targetZ = Math.sin(loopAngle) * 15;
+                }
+                
+                if (posInSegment === 11) {
+                    currentY += 70;
+                    if (segment % 3 === 1) {
+                        betaOffset = betaOffset === 0 ? 60 : 0;
+                    }
+                }
+            }
+            
+            // Center the structure
+            const centerX = residues.reduce((sum, r) => sum + r.targetX, 0) / residues.length;
+            const centerY = residues.reduce((sum, r) => sum + r.targetY, 0) / residues.length;
+            const centerZ = residues.reduce((sum, r) => sum + r.targetZ, 0) / residues.length;
+            
+            residues.forEach(r => {
+                r.targetX -= centerX;
+                r.targetY -= centerY;
+                r.targetZ -= centerZ;
+            });
+        }
+        
+        // Calculate statistics
+        function calculateStats() {
+            if (residues.length === 0) return { energy: 0, radius: 0, hbonds: 0, folded: 0 };
+            
+            let energy = 0;
+            let totalDist = 0;
+            let hbonds = 0;
+            let foldedDist = 0;
+            
+            const centerX = residues.reduce((sum, r) => sum + r.x, 0) / residues.length;
+            const centerY = residues.reduce((sum, r) => sum + r.y, 0) / residues.length;
+            const centerZ = residues.reduce((sum, r) => sum + r.z, 0) / residues.length;
+            
+            residues.forEach((r, i) => {
+                // Radius of gyration
+                const dx = r.x - centerX;
+                const dy = r.y - centerY;
+                const dz = r.z - centerZ;
+                totalDist += dx * dx + dy * dy + dz * dz;
+                
+                // Distance to target (folding progress)
+                const tdx = r.x - r.targetX;
+                const tdy = r.y - r.targetY;
+                const tdz = r.z - r.targetZ;
+                foldedDist += Math.sqrt(tdx * tdx + tdy * tdy + tdz * tdz);
+                
+                // Energy and H-bonds
+                residues.forEach((other, j) => {
+                    if (j <= i) return;
+                    const odx = other.x - r.x;
+                    const ody = other.y - r.y;
+                    const odz = other.z - r.z;
+                    const dist = Math.sqrt(odx * odx + ody * ody + odz * odz);
+                    
+                    // Potential energy (Lennard-Jones like)
+                    if (dist < 35) {
+                        const r6 = Math.pow(12 / dist, 6);
+                        const r12 = Math.pow(12 / dist, 12);
+                        energy -= (r6 - r12) * 0.5;
+                    }
+                    
+                    // H-bonds
+                    if (dist > 9 && dist < 13 && 
+                        (r.props.type === 'hydrophilic' || r.props.type === 'charged_pos' || r.props.type === 'charged_neg') &&
+                        (other.props.type === 'hydrophilic' || other.props.type === 'charged_pos' || other.props.type === 'charged_neg')) {
+                        hbonds++;
+                    }
+                });
+            });
+            
+            const radius = Math.sqrt(totalDist / residues.length);
+            const maxFoldDist = residues.length * 60;
+            const folded = Math.max(0, Math.min(100, 100 - (foldedDist / maxFoldDist) * 100));
+            
+            return { energy, radius, hbonds, folded };
+        }
+        
+        // Render
+        function render() {
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            
+            // Clear with gradient
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, 'rgba(10, 10, 26, 1)');
+            gradient.addColorStop(1, 'rgba(15, 15, 35, 1)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw subtle grid
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.04)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(width, i);
+                ctx.stroke();
+            }
+            
+            if (residues.length === 0) return;
+            
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const scale = zoom * 1.8;
+            
+            // Project all residues
+            const projected = residues.map(r => ({
+                residue: r,
+                ...r.project(centerX, centerY, rotationX, rotationY, scale)
+            }));
+            
+            // Sort by z-depth for proper rendering
+            projected.sort((a, b) => a.z - b.z);
+            
+            // Draw based on view mode
+            if (viewMode === 'ribbon') {
+                drawRibbon(projected, centerX, centerY);
+            } else if (viewMode === 'sticks') {
+                drawSticks(projected);
+            }
+            
+            // Draw balls (always on top for ribbon/sticks, or as main for balls mode)
+            drawBalls(projected, viewMode === 'balls');
+        }
+        
+        function drawRibbon(projected, centerX, centerY) {
+            if (projected.length < 2) return;
+            
+            // Sort back to original order for ribbon
+            const sorted = [...projected].sort((a, b) => a.residue.index - b.residue.index);
+            
+            // Draw ribbon with gradient
+            ctx.beginPath();
+            ctx.moveTo(sorted[0].x, sorted[0].y);
+            
+            for (let i = 1; i < sorted.length - 1; i++) {
+                const xc = (sorted[i].x + sorted[i + 1].x) / 2;
+                const yc = (sorted[i].y + sorted[i + 1].y) / 2;
+                ctx.quadraticCurveTo(sorted[i].x, sorted[i].y, xc, yc);
+            }
+            
+            ctx.lineTo(sorted[sorted.length - 1].x, sorted[sorted.length - 1].y);
+            
+            // Gradient stroke
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#00ff88');
+            gradient.addColorStop(0.5, '#00d4ff');
+            gradient.addColorStop(1, '#ff0080');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Glow effect
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 20;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawSticks(projected) {
+            const sorted = [...projected].sort((a, b) => a.residue.index - b.residue.index);
+            
+            for (let i = 0; i < sorted.length - 1; i++) {
+                const p1 = sorted[i];
+                const p2 = sorted[i + 1];
+                
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                
+                // Interpolate color
+                const gradient = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                gradient.addColorStop(0, p1.residue.props.color);
+                gradient.addColorStop(1, p2.residue.props.color);
+                
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 4 * p1.scale;
+                ctx.lineCap = 'round';
+                ctx.shadowColor = p1.residue.props.color;
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        function drawBalls(projected, large) {
+            projected.forEach(p => {
+                const r = p.residue;
+                const baseSize = large ? 14 : 7;
+                const size = baseSize * r.props.size * p.scale;
+                const pulse = Math.sin(r.pulsePhase) * 0.15 + 1;
+                
+                // Outer glow
+                const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * pulse * 2.5);
+                gradient.addColorStop(0, r.props.color);
+                gradient.addColorStop(0.4, r.props.color + 'AA');
+                gradient.addColorStop(0.7, r.props.color + '40');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size * pulse * 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Core sphere
+                const coreGradient = ctx.createRadialGradient(
+                    p.x - size * 0.3, p.y - size * 0.3, 0,
+                    p.x, p.y, size * pulse
+                );
+                coreGradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+                coreGradient.addColorStop(0.5, r.props.color);
+                coreGradient.addColorStop(1, r.props.color + '80');
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = coreGradient;
+                ctx.fill();
+                
+                // Highlight
+                ctx.beginPath();
+                ctx.arc(p.x - size * 0.3, p.y - size * 0.3, size * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fill();
+            });
+        }
+        
+        // Animation loop
+        function animate() {
+            if (isRunning) {
+                const dt = speed / 50;
+                residues.forEach(r => r.update(dt, temperature, interactionStrength, residues));
+                frame++;
+                document.getElementById('frameCounter').textContent = frame;
+                
+                // Update stats
+                const stats = calculateStats();
+                document.getElementById('energyValue').textContent = stats.energy.toFixed(2);
+                document.getElementById('radiusValue').textContent = stats.radius.toFixed(2) + ' Å';
+                document.getElementById('hbondsValue').textContent = stats.hbonds;
+                document.getElementById('foldedValue').textContent = stats.folded.toFixed(1) + '%';
+            }
+            
+            // Auto rotate when not dragging
+            if (!isDragging && isRunning) {
+                rotationY += 0.0015;
+            }
+            
+            render();
+            requestAnimationFrame(animate);
+        }
+        
+        // Event Listeners
+        document.getElementById('startBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('startBtn').textContent = isRunning ? '⏸ עצור' : '▶ התחל';
+            document.getElementById('indicatorDot').classList.toggle('paused', !isRunning);
+            document.getElementById('indicatorText').classList.toggle('paused', !isRunning);
+            document.getElementById('indicatorText').textContent = isRunning ? 'מתקפל...' : 'מושהה';
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            const sequence = document.getElementById('sequenceInput').value;
+            initProtein(sequence);
+            rotationX = 0.3;
+            rotationY = 0;
+            zoom = 1;
+            isRunning = false;
+            document.getElementById('startBtn').textContent = '▶ התחל';
+            document.getElementById('indicatorDot').classList.remove('paused');
+            document.getElementById('indicatorText').classList.remove('paused');
+            document.getElementById('indicatorText').textContent = 'מוכן להתחלה';
+        });
+        
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            const aas = 'AVLIMFWSTNQYKRHDEGPC';
+            let seq = '';
+            const length = Math.floor(Math.random() * 40) + 30;
+            for (let i = 0; i < length; i++) {
+                seq += aas[Math.floor(Math.random() * aas.length)];
+            }
+            document.getElementById('sequenceInput').value = seq;
+            initProtein(seq);
+        });
+        
+        document.getElementById('sequenceInput').addEventListener('input', (e) => {
+            initProtein(e.target.value);
+        });
+        
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = speed;
+        });
+        
+        document.getElementById('tempSlider').addEventListener('input', (e) => {
+            temperature = parseInt(e.target.value);
+            document.getElementById('tempValue').textContent = temperature;
+        });
+        
+        document.getElementById('interactionSlider').addEventListener('input', (e) => {
+            interactionStrength = parseInt(e.target.value);
+            document.getElementById('interactionValue').textContent = interactionStrength;
+        });
+        
+        document.querySelectorAll('.struct-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.struct-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                viewMode = btn.dataset.view;
+            });
+        });
+        
+        // Mouse controls
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            rotationY += dx * 0.01;
+            rotationX += dy * 0.01;
+            rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.95 : 1.05;
+            zoom = Math.max(0.3, Math.min(3, zoom));
+        });
+        
+        // Touch controls
+        let touchStartDistance = 0;
+        let touchStartZoom = 1;
+        
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+                touchStartZoom = zoom;
+            }
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && isDragging) {
+                const dx = e.touches[0].clientX - lastMouseX;
+                const dy = e.touches[0].clientY - lastMouseY;
+                rotationY += dx * 0.01;
+                rotationX += dy * 0.01;
+                rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                zoom = touchStartZoom * (distance / touchStartDistance);
+                zoom = Math.max(0.3, Math.min(3, zoom));
+            }
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+            touchStartDistance = 0;
+        });
+        
+        // Initialize
+        initProtein(document.getElementById('sequenceInput').value);
+        animate();
+    </script>
+</body>
+</html>
+
