@@ -1,0 +1,26 @@
+{
+  "gas": [
+    {
+      "timestamp": "2025-12-29T22:07:46.057Z",
+      "value": 0.97
+    }
+  ],
+  "water": [
+    {
+      "timestamp": "2025-12-29T22:07:46.057Z",
+      "value": 5
+    }
+  ],
+  "electricity": [
+    {
+      "timestamp": "2025-12-29T22:07:46.057Z",
+      "value": 1631
+    }
+  ],
+  "temperature": [
+    {
+      "timestamp": "2025-12-29T22:07:46.057Z",
+      "value": 63
+    }
+  ]
+}

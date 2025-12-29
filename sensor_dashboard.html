@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דשבורד חיישנים - Tuya</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .header .datetime {
+            font-size: 1.2rem;
+            color: #8892b0;
+            margin-top: 10px;
+        }
+
+        .header .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 5px 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .sensor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .sensor-title {
+            text-align: center;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #e6e6e6;
+        }
+
+        .sensor-icon {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .gauge-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 12;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .gauge-progress.gas {
+            stroke: url(#gasGradient);
+        }
+
+        .gauge-progress.water {
+            stroke: url(#waterGradient);
+        }
+
+        .gauge-progress.electricity {
+            stroke: url(#electricityGradient);
+        }
+
+        .gauge-progress.temperature {
+            stroke: url(#temperatureGradient);
+        }
+
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .current-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: #8892b0;
+        }
+
+        .history-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .history-title {
+            font-size: 0.9rem;
+            color: #8892b0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .history-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            color: #64ffda;
+        }
+
+        .history-progress {
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .history-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .history-progress-bar.gas {
+            background: linear-gradient(90deg, #ff6b6b, #ffa06b);
+        }
+
+        .history-progress-bar.water {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .history-progress-bar.electricity {
+            background: linear-gradient(90deg, #f9d423, #ff4e50);
+        }
+
+        .history-progress-bar.temperature {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .target-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+
+        .last-update {
+            font-size: 0.8rem;
+            color: #8892b0;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* Settings Panel */
+        .settings-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+            transform: rotate(90deg);
+        }
+
+        .settings-panel {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(26, 26, 46, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            display: none;
+            min-width: 300px;
+        }
+
+        .settings-panel.active {
+            display: block;
+        }
+
+        .settings-panel h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        .setting-item {
+            margin-bottom: 15px;
+        }
+
+        .setting-item label {
+            display: block;
+            margin-bottom: 5px;
+            color: #8892b0;
+        }
+
+        .setting-item input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 10px;
+            background: #ffd700;
+            border: none;
+            border-radius: 8px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-save:hover {
+            background: #ffed4a;
+        }
+
+        /* Chart Section */
+        .charts-section {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .charts-section h2 {
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mini-chart {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .mini-chart h4 {
+            color: #e6e6e6;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 80px;
+        }
+
+        .bar {
+            flex: 1;
+            border-radius: 3px 3px 0 0;
+            transition: height 0.3s ease;
+            min-height: 5px;
+        }
+
+        .bar.gas { background: linear-gradient(180deg, #ff6b6b, #ffa06b); }
+        .bar.water { background: linear-gradient(180deg, #4facfe, #00f2fe); }
+        .bar.electricity { background: linear-gradient(180deg, #f9d423, #ff4e50); }
+        .bar.temperature { background: linear-gradient(180deg, #667eea, #764ba2); }
+
+        .days-labels {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+
+        .days-labels span {
+            flex: 1;
+            text-align: center;
+            font-size: 0.6rem;
+            color: #8892b0;
+        }
+    </style>
+</head>
+<body>
+    <!-- SVG Gradients -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <linearGradient id="gasGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff6b6b"/>
+                <stop offset="100%" style="stop-color:#ffa06b"/>
+            </linearGradient>
+            <linearGradient id="waterGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4facfe"/>
+                <stop offset="100%" style="stop-color:#00f2fe"/>
+            </linearGradient>
+            <linearGradient id="electricityGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#f9d423"/>
+                <stop offset="100%" style="stop-color:#ff4e50"/>
+            </linearGradient>
+            <linearGradient id="temperatureGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#667eea"/>
+                <stop offset="100%" style="stop-color:#764ba2"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <div class="header">
+        <h1>🏠 דשבורד חיישני הבית</h1>
+        <div class="datetime" id="datetime"></div>
+        <div class="connection-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="connectionText">מחובר ל-Tuya</span>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Gas Sensor -->
+        <div class="sensor-card">
+            <div class="sensor-title">
+                <span class="sensor-icon">🔥</span>
+                צריכת גז
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress gas" cx="50" cy="50" r="40" 
+                            id="gasGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="gasValue">0.0</div>
+                    <div class="unit">m³/שעה</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="gasMonthly">0 m³</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar gas" id="gasProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="gasTarget">50</span> m³</span>
+                    <span id="gasPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="gasLastUpdate">--</span></div>
+        </div>
+
+        <!-- Water Sensor -->
+        <div class="sensor-card">
+            <div class="sensor-title">
+                <span class="sensor-icon">💧</span>
+                צריכת מים
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress water" cx="50" cy="50" r="40"
+                            id="waterGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="waterValue">0.0</div>
+                    <div class="unit">ליטר/דקה</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="waterMonthly">0 m³</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar water" id="waterProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="waterTarget">15</span> m³</span>
+                    <span id="waterPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="waterLastUpdate">--</span></div>
+        </div>
+
+        <!-- Electricity Sensor -->
+        <div class="sensor-card">
+            <div class="sensor-title">
+                <span class="sensor-icon">⚡</span>
+                צריכת חשמל
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress electricity" cx="50" cy="50" r="40"
+                            id="electricityGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="electricityValue">0</div>
+                    <div class="unit">קוט"ש</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="electricityMonthly">0 kWh</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar electricity" id="electricityProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="electricityTarget">500</span> kWh</span>
+                    <span id="electricityPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="electricityLastUpdate">--</span></div>
+        </div>
+
+        <!-- Water Heater Temperature -->
+        <div class="sensor-card">
+            <div class="sensor-title">
+                <span class="sensor-icon">🌡️</span>
+                טמפרטורת דוד מים
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress temperature" cx="50" cy="50" r="40"
+                            id="temperatureGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="temperatureValue">0</div>
+                    <div class="unit">°C</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">ממוצע יומי</div>
+                <div class="history-value" id="temperatureAvg">0°C</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar temperature" id="temperatureProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>טווח מומלץ: 55-65°C</span>
+                    <span id="temperatureStatus">תקין</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="temperatureLastUpdate">--</span></div>
+        </div>
+    </div>
+
+    <!-- Daily Charts -->
+    <div class="charts-section">
+        <h2>📊 היסטוריה יומית - 7 ימים אחרונים</h2>
+        <div class="chart-container">
+            <div class="mini-chart">
+                <h4>🔥 גז (m³)</h4>
+                <div class="bar-chart" id="gasChart"></div>
+                <div class="days-labels" id="gasDays"></div>
+            </div>
+            <div class="mini-chart">
+                <h4>💧 מים (m³)</h4>
+                <div class="bar-chart" id="waterChart"></div>
+                <div class="days-labels" id="waterDays"></div>
+            </div>
+            <div class="mini-chart">
+                <h4>⚡ חשמל (kWh)</h4>
+                <div class="bar-chart" id="electricityChart"></div>
+                <div class="days-labels" id="electricityDays"></div>
+            </div>
+            <div class="mini-chart">
+                <h4>🌡️ טמפרטורה (°C)</h4>
+                <div class="bar-chart" id="temperatureChart"></div>
+                <div class="days-labels" id="temperatureDays"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>מערכת ניטור חיישנים חכמים | Tuya Smart Integration</p>
+        <p style="margin-top: 5px;">הנתונים נשמרים באופן מקומי על הטאבלט</p>
+    </div>
+
+    <!-- Settings Button -->
+    <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <h3>⚙️ הגדרות Tuya</h3>
+        <div class="setting-item">
+            <label>Access ID</label>
+            <input type="text" id="tuyaAccessId" placeholder="הזן Access ID">
+        </div>
+        <div class="setting-item">
+            <label>Access Secret</label>
+            <input type="password" id="tuyaAccessSecret" placeholder="הזן Access Secret">
+        </div>
+        <div class="setting-item">
+            <label>Device ID - גז</label>
+            <input type="text" id="gasDeviceId" placeholder="הזן Device ID">
+        </div>
+        <div class="setting-item">
+            <label>Device ID - מים</label>
+            <input type="text" id="waterDeviceId" placeholder="הזן Device ID">
+        </div>
+        <div class="setting-item">
+            <label>Device ID - חשמל</label>
+            <input type="text" id="electricityDeviceId" placeholder="הזן Device ID">
+        </div>
+        <div class="setting-item">
+            <label>Device ID - טמפרטורה</label>
+            <input type="text" id="temperatureDeviceId" placeholder="הזן Device ID">
+        </div>
+        <button class="btn-save" onclick="saveSettings()">💾 שמור הגדרות</button>
+        <button class="btn-save" style="background: #64ffda; margin-top: 5px;" onclick="exportData()">📤 ייצוא נתונים</button>
+    </div>
+
+    <script>
+        // ========================================
+        // Configuration & State Management
+        // ========================================
+        
+        const CONFIG = {
+            UPDATE_INTERVAL: 5000, // Update every 5 seconds
+            STORAGE_KEY: 'sensorDashboardData',
+            SETTINGS_KEY: 'sensorDashboardSettings',
+            TARGETS: {
+                gas: 50,      // m³ per month
+                water: 15,    // m³ per month
+                electricity: 500, // kWh per month
+                temperature: { min: 55, max: 65, optimal: 60 }
+            }
+        };
+
+        let sensorData = {
+            gas: { current: 0, monthly: 0, daily: [], history: [] },
+            water: { current: 0, monthly: 0, daily: [], history: [] },
+            electricity: { current: 0, monthly: 0, daily: [], history: [] },
+            temperature: { current: 0, average: 0, daily: [], history: [] }
+        };
+
+        let settings = {
+            tuyaAccessId: '',
+            tuyaAccessSecret: '',
+            devices: {
+                gas: '',
+                water: '',
+                electricity: '',
+                temperature: ''
+            }
+        };
+
+        // ========================================
+        // LocalStorage Functions (Data Persistence)
+        // ========================================
+        
+        function loadFromStorage() {
+            try {
+                const savedData = localStorage.getItem(CONFIG.STORAGE_KEY);
+                if (savedData) {
+                    sensorData = JSON.parse(savedData);
+                    console.log('נתונים נטענו מהאחסון המקומי');
+                }
+                
+                const savedSettings = localStorage.getItem(CONFIG.SETTINGS_KEY);
+                if (savedSettings) {
+                    settings = JSON.parse(savedSettings);
+                    populateSettingsForm();
+                }
+            } catch (e) {
+                console.error('שגיאה בטעינת נתונים:', e);
+            }
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(sensorData));
+            } catch (e) {
+                console.error('שגיאה בשמירת נתונים:', e);
+            }
+        }
+
+        function saveSettings() {
+            settings = {
+                tuyaAccessId: document.getElementById('tuyaAccessId').value,
+                tuyaAccessSecret: document.getElementById('tuyaAccessSecret').value,
+                devices: {
+                    gas: document.getElementById('gasDeviceId').value,
+                    water: document.getElementById('waterDeviceId').value,
+                    electricity: document.getElementById('electricityDeviceId').value,
+                    temperature: document.getElementById('temperatureDeviceId').value
+                }
+            };
+            localStorage.setItem(CONFIG.SETTINGS_KEY, JSON.stringify(settings));
+            alert('ההגדרות נשמרו בהצלחה!');
+            toggleSettings();
+        }
+
+        function populateSettingsForm() {
+            document.getElementById('tuyaAccessId').value = settings.tuyaAccessId || '';
+            document.getElementById('tuyaAccessSecret').value = settings.tuyaAccessSecret || '';
+            document.getElementById('gasDeviceId').value = settings.devices?.gas || '';
+            document.getElementById('waterDeviceId').value = settings.devices?.water || '';
+            document.getElementById('electricityDeviceId').value = settings.devices?.electricity || '';
+            document.getElementById('temperatureDeviceId').value = settings.devices?.temperature || '';
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(sensorData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sensor_data_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ========================================
+        // Tuya API Integration
+        // ========================================
+        
+        class TuyaClient {
+            constructor(accessId, accessSecret) {
+                this.accessId = accessId;
+                this.accessSecret = accessSecret;
+                this.baseUrl = 'https://openapi.tuyaeu.com'; // EU region, change as needed
+            }
+
+            // Note: Real Tuya API requires server-side implementation due to CORS
+            // This is a placeholder for the actual implementation
+            async getDeviceStatus(deviceId) {
+                // In production, this should call your backend server
+                // which then communicates with Tuya Cloud API
+                console.log(`Fetching status for device: ${deviceId}`);
+                
+                // Simulated response - replace with actual API call
+                return {
+                    success: true,
+                    result: {
+                        status: [
+                            { code: 'cur_current', value: Math.random() * 100 },
+                            { code: 'cur_power', value: Math.random() * 1000 },
+                            { code: 'cur_voltage', value: 220 + Math.random() * 10 }
+                        ]
+                    }
+                };
+            }
+        }
+
+        // ========================================
+        // Sensor Data Simulation (Demo Mode)
+        // ========================================
+        
+        function simulateSensorData() {
+            const now = new Date();
+            const dayOfMonth = now.getDate();
+            
+            // Simulate real-time values
+            sensorData.gas.current = (Math.random() * 2).toFixed(2);
+            sensorData.water.current = (Math.random() * 15).toFixed(1);
+            sensorData.electricity.current = Math.floor(Math.random() * 3000);
+            sensorData.temperature.current = Math.floor(45 + Math.random() * 25);
+
+            // Accumulate monthly data (simplified simulation)
+            sensorData.gas.monthly = (dayOfMonth * 1.5 + Math.random() * 5).toFixed(1);
+            sensorData.water.monthly = (dayOfMonth * 0.4 + Math.random() * 2).toFixed(2);
+            sensorData.electricity.monthly = Math.floor(dayOfMonth * 15 + Math.random() * 50);
+            sensorData.temperature.average = Math.floor(55 + Math.random() * 10);
+
+            // Generate daily history for charts (last 7 days)
+            const days = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+            if (sensorData.gas.daily.length === 0) {
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dayName = days[date.getDay()];
+                    
+                    sensorData.gas.daily.push({ day: dayName, value: 1 + Math.random() * 3 });
+                    sensorData.water.daily.push({ day: dayName, value: 0.3 + Math.random() * 0.8 });
+                    sensorData.electricity.daily.push({ day: dayName, value: 10 + Math.random() * 25 });
+                    sensorData.temperature.daily.push({ day: dayName, value: 50 + Math.random() * 15 });
+                }
+            }
+
+            // Add to history log
+            const historyEntry = {
+                timestamp: now.toISOString(),
+                gas: sensorData.gas.current,
+                water: sensorData.water.current,
+                electricity: sensorData.electricity.current,
+                temperature: sensorData.temperature.current
+            };
+            
+            sensorData.gas.history.push(historyEntry);
+            if (sensorData.gas.history.length > 1000) {
+                sensorData.gas.history.shift(); // Keep last 1000 entries
+            }
+
+            saveToStorage();
+        }
+
+        // ========================================
+        // UI Update Functions
+        // ========================================
+        
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            document.getElementById('datetime').textContent = now.toLocaleDateString('he-IL', options);
+        }
+
+        function updateGauge(gaugeId, percentage) {
+            const circumference = 251.2; // 2 * PI * 40
+            const offset = circumference - (percentage / 100) * circumference;
+            const gauge = document.getElementById(gaugeId);
+            if (gauge) {
+                gauge.style.strokeDashoffset = offset;
+            }
+        }
+
+        function updateDisplay() {
+            const timeStr = new Date().toLocaleTimeString('he-IL');
+
+            // Gas
+            document.getElementById('gasValue').textContent = sensorData.gas.current;
+            document.getElementById('gasMonthly').textContent = `${sensorData.gas.monthly} m³`;
+            const gasPercent = Math.min(100, (sensorData.gas.monthly / CONFIG.TARGETS.gas) * 100);
+            document.getElementById('gasProgressBar').style.width = `${gasPercent}%`;
+            document.getElementById('gasPercent').textContent = `${gasPercent.toFixed(0)}%`;
+            document.getElementById('gasLastUpdate').textContent = timeStr;
+            updateGauge('gasGauge', gasPercent);
+
+            // Water
+            document.getElementById('waterValue').textContent = sensorData.water.current;
+            document.getElementById('waterMonthly').textContent = `${sensorData.water.monthly} m³`;
+            const waterPercent = Math.min(100, (sensorData.water.monthly / CONFIG.TARGETS.water) * 100);
+            document.getElementById('waterProgressBar').style.width = `${waterPercent}%`;
+            document.getElementById('waterPercent').textContent = `${waterPercent.toFixed(0)}%`;
+            document.getElementById('waterLastUpdate').textContent = timeStr;
+            updateGauge('waterGauge', waterPercent);
+
+            // Electricity
+            document.getElementById('electricityValue').textContent = sensorData.electricity.current;
+            document.getElementById('electricityMonthly').textContent = `${sensorData.electricity.monthly} kWh`;
+            const elecPercent = Math.min(100, (sensorData.electricity.monthly / CONFIG.TARGETS.electricity) * 100);
+            document.getElementById('electricityProgressBar').style.width = `${elecPercent}%`;
+            document.getElementById('electricityPercent').textContent = `${elecPercent.toFixed(0)}%`;
+            document.getElementById('electricityLastUpdate').textContent = timeStr;
+            updateGauge('electricityGauge', elecPercent);
+
+            // Temperature
+            document.getElementById('temperatureValue').textContent = sensorData.temperature.current;
+            document.getElementById('temperatureAvg').textContent = `${sensorData.temperature.average}°C`;
+            const tempPercent = Math.min(100, (sensorData.temperature.current / 80) * 100);
+            document.getElementById('temperatureProgressBar').style.width = `${tempPercent}%`;
+            
+            // Temperature status
+            const temp = sensorData.temperature.current;
+            let tempStatus = 'תקין';
+            if (temp < CONFIG.TARGETS.temperature.min) tempStatus = '❄️ קר';
+            else if (temp > CONFIG.TARGETS.temperature.max) tempStatus = '🔥 חם';
+            else tempStatus = '✅ תקין';
+            document.getElementById('temperatureStatus').textContent = tempStatus;
+            document.getElementById('temperatureLastUpdate').textContent = timeStr;
+            updateGauge('temperatureGauge', tempPercent);
+        }
+
+        function updateCharts() {
+            const chartTypes = ['gas', 'water', 'electricity', 'temperature'];
+            
+            chartTypes.forEach(type => {
+                const chartContainer = document.getElementById(`${type}Chart`);
+                const daysContainer = document.getElementById(`${type}Days`);
+                
+                if (!chartContainer || !sensorData[type].daily.length) return;
+                
+                chartContainer.innerHTML = '';
+                daysContainer.innerHTML = '';
+                
+                const maxValue = Math.max(...sensorData[type].daily.map(d => d.value));
+                
+                sensorData[type].daily.forEach(item => {
+                    const bar = document.createElement('div');
+                    bar.className = `bar ${type}`;
+                    const height = (item.value / maxValue) * 100;
+                    bar.style.height = `${height}%`;
+                    bar.title = `${item.value.toFixed(1)}`;
+                    chartContainer.appendChild(bar);
+                    
+                    const dayLabel = document.createElement('span');
+                    dayLabel.textContent = item.day;
+                    daysContainer.appendChild(dayLabel);
+                });
+            });
+        }
+
+        // ========================================
+        // Settings Panel
+        // ========================================
+        
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('active');
+        }
+
+        // ========================================
+        // Monthly Data Reset Check
+        // ========================================
+        
+        function checkMonthlyReset() {
+            const now = new Date();
+            const lastReset = localStorage.getItem('lastMonthlyReset');
+            
+            if (lastReset) {
+                const lastResetDate = new Date(lastReset);
+                if (lastResetDate.getMonth() !== now.getMonth()) {
+                    // New month - reset monthly data
+                    sensorData.gas.monthly = 0;
+                    sensorData.water.monthly = 0;
+                    sensorData.electricity.monthly = 0;
+                    localStorage.setItem('lastMonthlyReset', now.toISOString());
+                    console.log('נתונים חודשיים אופסו');
+                }
+            } else {
+                localStorage.setItem('lastMonthlyReset', now.toISOString());
+            }
+        }
+
+        // ========================================
+        // Main Initialization
+        // ========================================
+        
+        function init() {
+            console.log('מאתחל דשבורד חיישנים...');
+            
+            // Load saved data
+            loadFromStorage();
+            
+            // Check for monthly reset
+            checkMonthlyReset();
+            
+            // Initial update
+            updateDateTime();
+            simulateSensorData();
+            updateDisplay();
+            updateCharts();
+            
+            // Set up intervals
+            setInterval(updateDateTime, 1000);
+            setInterval(() => {
+                simulateSensorData();
+                updateDisplay();
+            }, CONFIG.UPDATE_INTERVAL);
+            
+            // Update charts every minute
+            setInterval(updateCharts, 60000);
+            
+            console.log('דשבורד מוכן!');
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', init);
+
+        // ========================================
+        // Service Worker Registration (for offline support)
+        // ========================================
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // You can add a service worker for offline functionality
+                console.log('Service Worker support available');
+            });
+        }
+    </script>
+</body>
+</html>
