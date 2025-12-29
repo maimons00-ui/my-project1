@@ -3,24 +3,40 @@
     {
       "timestamp": "2025-12-29T22:07:46.057Z",
       "value": 0.97
+    },
+    {
+      "timestamp": "2025-12-29T22:17:04.003Z",
+      "value": 1.01
     }
   ],
   "water": [
     {
       "timestamp": "2025-12-29T22:07:46.057Z",
       "value": 5
+    },
+    {
+      "timestamp": "2025-12-29T22:17:04.003Z",
+      "value": 5.3
     }
   ],
   "electricity": [
     {
       "timestamp": "2025-12-29T22:07:46.057Z",
       "value": 1631
+    },
+    {
+      "timestamp": "2025-12-29T22:17:04.003Z",
+      "value": 2427
     }
   ],
   "temperature": [
     {
       "timestamp": "2025-12-29T22:07:46.057Z",
       "value": 63
+    },
+    {
+      "timestamp": "2025-12-29T22:17:04.003Z",
+      "value": 65
     }
   ]
 }
