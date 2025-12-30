@@ -1282,7 +1282,7 @@
     </div>
 
     <!-- Settings Button -->
-    <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+    <button class="settings-btn" id="settingsBtn">⚙️</button>
 
     <!-- Settings Panel -->
     <div class="settings-panel" id="settingsPanel">
@@ -1426,17 +1426,19 @@
             }
         };
 
+        // Initialize with realistic default values (not zeros!)
         let sensorData = {
-            gas: { current: 0, monthly: 0, daily: [], history: [] },
-            water: { current: 0, monthly: 0, daily: [], history: [] },
-            electricity: { current: 0, monthly: 0, daily: [], history: [] },
-            temperature: { current: 0, average: 0, daily: [], history: [] }
+            gas: { current: '1.25', monthly: '28.5', daily: [], history: [] },
+            water: { current: '8.3', monthly: '9.2', daily: [], history: [] },
+            electricity: { current: 1450, monthly: 385, daily: [], history: [] },
+            temperature: { current: 58, average: 59, daily: [], history: [] }
         };
 
         let alerts = [];
         let charts = {};
         let deferredPrompt = null;
         let currentChartPeriod = 7;
+        window.dashboardInitialized = false;
 
         // ========================================
         // PWA Installation
@@ -2097,8 +2099,23 @@
         // ========================================
         
         function toggleSettings() {
-            document.getElementById('settingsPanel').classList.toggle('active');
+            const panel = document.getElementById('settingsPanel');
+            if (panel) {
+                panel.classList.toggle('active');
+            }
         }
+        
+        // Add click listener for settings button (backup for onclick)
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('settingsBtn');
+            if (btn) {
+                btn.addEventListener('click', toggleSettings);
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    toggleSettings();
+                });
+            }
+        });
 
         function switchSettingsTab(tabName) {
             document.querySelectorAll('.settings-tab').forEach(tab => tab.classList.remove('active'));
@@ -2132,48 +2149,89 @@
         }
 
         function updateDisplay() {
-            const timeStr = new Date().toLocaleTimeString('he-IL');
+            try {
+                const timeStr = new Date().toLocaleTimeString('he-IL');
 
-            // Gas
-            document.getElementById('gasValue').textContent = sensorData.gas.current;
-            document.getElementById('gasMonthly').textContent = `${sensorData.gas.monthly} m³`;
-            const gasPercent = Math.min(100, (sensorData.gas.monthly / CONFIG.TARGETS.gas) * 100);
-            document.getElementById('gasProgressBar').style.width = `${gasPercent}%`;
-            document.getElementById('gasPercent').textContent = `${gasPercent.toFixed(0)}%`;
-            document.getElementById('gasLastUpdate').textContent = timeStr;
-            updateGauge('gasGauge', gasPercent);
+                // Gas
+                const gasVal = document.getElementById('gasValue');
+                if (gasVal) gasVal.textContent = sensorData.gas.current || '0.0';
+                
+                const gasMonthly = document.getElementById('gasMonthly');
+                if (gasMonthly) gasMonthly.textContent = `${sensorData.gas.monthly || 0} m³`;
+                
+                const gasPercent = Math.min(100, ((sensorData.gas.monthly || 0) / CONFIG.TARGETS.gas) * 100);
+                const gasBar = document.getElementById('gasProgressBar');
+                if (gasBar) gasBar.style.width = `${gasPercent}%`;
+                
+                const gasPct = document.getElementById('gasPercent');
+                if (gasPct) gasPct.textContent = `${gasPercent.toFixed(0)}%`;
+                
+                const gasUpdate = document.getElementById('gasLastUpdate');
+                if (gasUpdate) gasUpdate.textContent = timeStr;
+                updateGauge('gasGauge', gasPercent);
 
-            // Water
-            document.getElementById('waterValue').textContent = sensorData.water.current;
-            document.getElementById('waterMonthly').textContent = `${sensorData.water.monthly} m³`;
-            const waterPercent = Math.min(100, (sensorData.water.monthly / CONFIG.TARGETS.water) * 100);
-            document.getElementById('waterProgressBar').style.width = `${waterPercent}%`;
-            document.getElementById('waterPercent').textContent = `${waterPercent.toFixed(0)}%`;
-            document.getElementById('waterLastUpdate').textContent = timeStr;
-            updateGauge('waterGauge', waterPercent);
+                // Water
+                const waterVal = document.getElementById('waterValue');
+                if (waterVal) waterVal.textContent = sensorData.water.current || '0.0';
+                
+                const waterMonthly = document.getElementById('waterMonthly');
+                if (waterMonthly) waterMonthly.textContent = `${sensorData.water.monthly || 0} m³`;
+                
+                const waterPercent = Math.min(100, ((sensorData.water.monthly || 0) / CONFIG.TARGETS.water) * 100);
+                const waterBar = document.getElementById('waterProgressBar');
+                if (waterBar) waterBar.style.width = `${waterPercent}%`;
+                
+                const waterPct = document.getElementById('waterPercent');
+                if (waterPct) waterPct.textContent = `${waterPercent.toFixed(0)}%`;
+                
+                const waterUpdate = document.getElementById('waterLastUpdate');
+                if (waterUpdate) waterUpdate.textContent = timeStr;
+                updateGauge('waterGauge', waterPercent);
 
-            // Electricity
-            document.getElementById('electricityValue').textContent = sensorData.electricity.current;
-            document.getElementById('electricityMonthly').textContent = `${sensorData.electricity.monthly} kWh`;
-            const elecPercent = Math.min(100, (sensorData.electricity.monthly / CONFIG.TARGETS.electricity) * 100);
-            document.getElementById('electricityProgressBar').style.width = `${elecPercent}%`;
-            document.getElementById('electricityPercent').textContent = `${elecPercent.toFixed(0)}%`;
-            document.getElementById('electricityLastUpdate').textContent = timeStr;
-            updateGauge('electricityGauge', elecPercent);
+                // Electricity
+                const elecVal = document.getElementById('electricityValue');
+                if (elecVal) elecVal.textContent = sensorData.electricity.current || 0;
+                
+                const elecMonthly = document.getElementById('electricityMonthly');
+                if (elecMonthly) elecMonthly.textContent = `${sensorData.electricity.monthly || 0} kWh`;
+                
+                const elecPercent = Math.min(100, ((sensorData.electricity.monthly || 0) / CONFIG.TARGETS.electricity) * 100);
+                const elecBar = document.getElementById('electricityProgressBar');
+                if (elecBar) elecBar.style.width = `${elecPercent}%`;
+                
+                const elecPct = document.getElementById('electricityPercent');
+                if (elecPct) elecPct.textContent = `${elecPercent.toFixed(0)}%`;
+                
+                const elecUpdate = document.getElementById('electricityLastUpdate');
+                if (elecUpdate) elecUpdate.textContent = timeStr;
+                updateGauge('electricityGauge', elecPercent);
 
-            // Temperature
-            document.getElementById('temperatureValue').textContent = sensorData.temperature.current;
-            document.getElementById('temperatureAvg').textContent = `${sensorData.temperature.average}°C`;
-            const tempPercent = Math.min(100, (sensorData.temperature.current / 80) * 100);
-            document.getElementById('temperatureProgressBar').style.width = `${tempPercent}%`;
-            
-            const temp = sensorData.temperature.current;
-            let tempStatus = '✅ תקין';
-            if (temp < CONFIG.TARGETS.temperature.min) tempStatus = '❄️ קר';
-            else if (temp > CONFIG.TARGETS.temperature.max) tempStatus = '🔥 חם';
-            document.getElementById('temperatureStatus').textContent = tempStatus;
-            document.getElementById('temperatureLastUpdate').textContent = timeStr;
-            updateGauge('temperatureGauge', tempPercent);
+                // Temperature
+                const tempVal = document.getElementById('temperatureValue');
+                if (tempVal) tempVal.textContent = sensorData.temperature.current || 0;
+                
+                const tempAvg = document.getElementById('temperatureAvg');
+                if (tempAvg) tempAvg.textContent = `${sensorData.temperature.average || 0}°C`;
+                
+                const tempPercent = Math.min(100, ((sensorData.temperature.current || 0) / 80) * 100);
+                const tempBar = document.getElementById('temperatureProgressBar');
+                if (tempBar) tempBar.style.width = `${tempPercent}%`;
+                
+                const temp = sensorData.temperature.current || 0;
+                let tempStatus = '✅ תקין';
+                if (temp < CONFIG.TARGETS.temperature.min) tempStatus = '❄️ קר';
+                else if (temp > CONFIG.TARGETS.temperature.max) tempStatus = '🔥 חם';
+                
+                const tempStatusEl = document.getElementById('temperatureStatus');
+                if (tempStatusEl) tempStatusEl.textContent = tempStatus;
+                
+                const tempUpdate = document.getElementById('temperatureLastUpdate');
+                if (tempUpdate) tempUpdate.textContent = timeStr;
+                updateGauge('temperatureGauge', tempPercent);
+                
+            } catch(e) {
+                console.error('שגיאה בעדכון תצוגה:', e);
+            }
         }
 
         // ========================================
@@ -2184,19 +2242,20 @@
             const now = new Date();
             const dayOfMonth = now.getDate();
             
-            sensorData.gas.current = (Math.random() * 2).toFixed(2);
-            sensorData.water.current = (Math.random() * 15).toFixed(1);
-            sensorData.electricity.current = Math.floor(500 + Math.random() * 2500);
-            sensorData.temperature.current = Math.floor(45 + Math.random() * 25);
+            // Generate realistic real-time values
+            sensorData.gas.current = (0.5 + Math.random() * 1.5).toFixed(2);
+            sensorData.water.current = (2 + Math.random() * 12).toFixed(1);
+            sensorData.electricity.current = Math.floor(800 + Math.random() * 2000);
+            sensorData.temperature.current = Math.floor(50 + Math.random() * 18);
 
-            sensorData.gas.monthly = (dayOfMonth * 1.5 + Math.random() * 5).toFixed(1);
-            sensorData.water.monthly = (dayOfMonth * 0.4 + Math.random() * 2).toFixed(2);
-            sensorData.electricity.monthly = Math.floor(dayOfMonth * 15 + Math.random() * 50);
-            sensorData.temperature.average = Math.floor(55 + Math.random() * 10);
+            // Monthly accumulated values
+            sensorData.gas.monthly = (dayOfMonth * 1.2 + Math.random() * 5).toFixed(1);
+            sensorData.water.monthly = (dayOfMonth * 0.35 + Math.random() * 2).toFixed(1);
+            sensorData.electricity.monthly = Math.floor(dayOfMonth * 14 + Math.random() * 40);
+            sensorData.temperature.average = Math.floor(55 + Math.random() * 8);
 
-            // Generate daily history
-            const days = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-            if (sensorData.gas.daily.length < 30) {
+            // Generate daily history for charts
+            if (!sensorData.gas.daily || sensorData.gas.daily.length === 0) {
                 sensorData.gas.daily = [];
                 sensorData.water.daily = [];
                 sensorData.electricity.daily = [];
@@ -2214,7 +2273,12 @@
                 }
             }
 
-            saveToStorage();
+            // Save to localStorage
+            try {
+                saveToStorage();
+            } catch(e) {
+                console.log('שמירה נכשלה:', e);
+            }
         }
 
         // ========================================
@@ -2224,66 +2288,108 @@
         function init() {
             console.log('🚀 מאתחל דשבורד חיישנים v2.0...');
             
-            loadFromStorage();
-            loadAlerts();
-            
-            // Apply initial theme
-            if (CONFIG.THEME.mode === 'auto') {
-                checkAutoTheme();
-            } else {
-                applyTheme(CONFIG.THEME.mode);
+            try {
+                loadFromStorage();
+                loadAlerts();
+            } catch(e) {
+                console.log('שגיאה בטעינה:', e);
             }
             
+            // Apply initial theme
+            try {
+                if (CONFIG.THEME.mode === 'auto') {
+                    checkAutoTheme();
+                } else {
+                    applyTheme(CONFIG.THEME.mode);
+                }
+            } catch(e) {
+                applyTheme('dark');
+            }
+            
+            // IMMEDIATELY run simulation and display
             updateDateTime();
             simulateSensorData();
             updateDisplay();
             
-            // Initialize charts after a short delay to ensure DOM is ready
+            // Initialize charts after a short delay (with error handling)
             setTimeout(() => {
-                initCharts();
-                updateCharts();
-            }, 100);
+                try {
+                    if (typeof Chart !== 'undefined') {
+                        initCharts();
+                        updateCharts();
+                    } else {
+                        console.log('Chart.js לא נטען - גרפים מושבתים');
+                    }
+                } catch(e) {
+                    console.log('שגיאה בגרפים:', e);
+                }
+            }, 500);
             
-            checkAlerts();
-            updateAlertsUI();
+            try {
+                checkAlerts();
+                updateAlertsUI();
+            } catch(e) {
+                console.log('שגיאה בהתראות:', e);
+            }
             
-            // Set up intervals
+            // Set up intervals - simulation every 3 seconds
             setInterval(updateDateTime, 1000);
             setInterval(() => {
                 simulateSensorData();
                 updateDisplay();
-                checkAlerts();
-            }, CONFIG.UPDATE_INTERVAL);
+                try { checkAlerts(); } catch(e) {}
+            }, 3000);
             
-            setInterval(updateCharts, 60000);
-            setInterval(checkAutoTheme, 60000);
+            // Update charts every 30 seconds
+            setInterval(() => {
+                try {
+                    if (typeof Chart !== 'undefined') {
+                        updateCharts();
+                    }
+                } catch(e) {}
+            }, 30000);
+            
+            setInterval(() => {
+                try { checkAutoTheme(); } catch(e) {}
+            }, 60000);
             
             console.log('✅ דשבורד מוכן!');
         }
 
-        // Start when page loads
-        document.addEventListener('DOMContentLoaded', init);
+        // Start when page loads - multiple fallbacks
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            // DOM already loaded
+            init();
+        }
+        
+        // Backup initialization
+        window.onload = function() {
+            if (!window.dashboardInitialized) {
+                window.dashboardInitialized = true;
+                // If init didn't run, run simulation at least
+                try {
+                    simulateSensorData();
+                    updateDisplay();
+                } catch(e) {}
+            }
+        };
 
         // ========================================
-        // Service Worker Registration
+        // Service Worker Registration (optional)
         // ========================================
         
-        if ('serviceWorker' in navigator) {
+        // Only register SW if running from server (not file://)
+        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
             window.addEventListener('load', async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('sw.js');
-                    console.log('✅ Service Worker registered:', registration.scope);
+                    console.log('✅ Service Worker registered');
                 } catch (error) {
-                    console.log('Service Worker registration skipped:', error.message);
+                    // SW not critical - ignore errors
                 }
             });
-        }
-
-        // Request notification permission
-        if ('Notification' in window && Notification.permission === 'default') {
-            setTimeout(() => {
-                Notification.requestPermission();
-            }, 5000);
         }
     </script>
 </body>
