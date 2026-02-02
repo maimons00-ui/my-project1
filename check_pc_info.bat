@@ -10,7 +10,7 @@ echo.
 
 echo IPv4 Addresses:
 set "foundIP="
-for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /R /C:"IPv4 Address" /C:"IPv4-Address"') do (
+for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /I /C:"IPv4"') do (
     set "ip=%%A"
     set "ip=!ip: =!"
     if not "!ip!"=="" (
