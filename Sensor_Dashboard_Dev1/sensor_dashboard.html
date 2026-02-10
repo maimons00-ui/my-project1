@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>דשבורד חיישנים - DEV1</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="חיישנים Dev">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            /* Light Mode (Day) */
+            --bg-primary: linear-gradient(135deg, #e8f4f8 0%, #d4e8ed 50%, #c1dce6 100%);
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --bg-card-hover: rgba(255, 255, 255, 0.95);
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --accent-color: #d4a017;
+            --accent-glow: rgba(212, 160, 23, 0.3);
+            --border-color: rgba(0, 0, 0, 0.1);
+            --chart-bg: rgba(0, 0, 0, 0.05);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            
+            /* Responsive sizing */
+            --gauge-size: min(40vw, 200px);
+            --font-title: clamp(1.2rem, 4vw, 2.5rem);
+            --font-value: clamp(1.5rem, 5vw, 2.5rem);
+            --font-normal: clamp(0.75rem, 2vw, 1rem);
+            --font-small: clamp(0.65rem, 1.5vw, 0.85rem);
+            --padding-card: clamp(10px, 2vw, 25px);
+            --gap-size: clamp(10px, 2vw, 30px);
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode (Night) */
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-hover: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #e6e6e6;
+            --text-muted: #8892b0;
+            --accent-color: #ffd700;
+            --accent-glow: rgba(255, 215, 0, 0.3);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --chart-bg: rgba(0, 0, 0, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.5s ease, color 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+            padding-top: 25px; /* Space for dev banner */
+            height: calc(100vh - 25px);
+            height: calc(100dvh - 25px);
+            max-height: calc(100vh - 25px);
+            overflow: hidden;
+        }
+
+        /* DEV1 Banner */
+        .dev-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, #ff6b6b, #ffa06b);
+            color: white;
+            text-align: center;
+            padding: 2px 5px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            z-index: 9999;
+        }
+
+        .header {
+            text-align: center;
+            padding: 3px 10px;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: clamp(0.9rem, 2.5vw, 1.5rem);
+            color: var(--accent-color);
+            text-shadow: 0 0 20px var(--accent-glow);
+            margin-bottom: 2px;
+        }
+
+        .header .datetime {
+            font-size: clamp(0.6rem, 1.5vw, 0.85rem);
+            color: var(--text-muted);
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: clamp(5px, 1vw, 10px);
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: clamp(3px, 0.5vw, 6px);
+            padding: clamp(2px, 0.5vw, 4px) clamp(6px, 1vw, 12px);
+            background: var(--bg-card);
+            border-radius: 15px;
+            font-size: clamp(0.55rem, 1.2vw, 0.75rem);
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.warning { background: #ff9800; }
+        .status-dot.error { background: #f44336; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: clamp(4px, 1vw, 8px);
+            padding: clamp(3px, 0.8vw, 5px) clamp(8px, 1.5vw, 15px);
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-size: var(--font-small);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover { background: var(--bg-card-hover); }
+        .theme-icon { font-size: clamp(0.9rem, 2.5vw, 1.2rem); }
+        #themeText { display: none; }
+        @media (min-width: 500px) { #themeText { display: inline; } }
+
+        .alert-banner {
+            position: fixed;
+            top: 25px;
+            left: 0;
+            right: 0;
+            padding: clamp(8px, 2vw, 15px) clamp(10px, 2vw, 20px);
+            background: linear-gradient(90deg, #f44336, #e91e63);
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            z-index: 1000;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: clamp(8px, 2vw, 15px);
+            font-size: var(--font-small);
+        }
+
+        .alert-banner.active { transform: translateY(0); }
+
+        .alert-banner .close-alert {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: clamp(3px, 0.8vw, 5px) clamp(8px, 1.5vw, 15px);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: var(--font-small);
+        }
+
+        .alerts-panel {
+            position: fixed;
+            top: clamp(85px, 15vw, 105px);
+            left: clamp(10px, 2vw, 20px);
+            right: clamp(10px, 2vw, 20px);
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: clamp(10px, 2vw, 15px);
+            border: 1px solid var(--border-color);
+            max-width: 350px;
+            max-height: 50vh;
+            overflow-y: auto;
+            display: none;
+            z-index: 999;
+            box-shadow: 0 10px 40px var(--shadow-color);
+        }
+
+        .alerts-panel.active { display: block; }
+
+        .alerts-panel h3 {
+            color: var(--accent-color);
+            margin-bottom: clamp(6px, 1.5vw, 10px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: var(--font-normal);
+        }
+
+        .alert-item {
+            padding: clamp(6px, 1.5vw, 10px);
+            margin-bottom: clamp(5px, 1vw, 8px);
+            border-radius: 8px;
+            font-size: var(--font-small);
+        }
+
+        .alert-item.warning {
+            background: rgba(255, 152, 0, 0.2);
+            border-right: 3px solid #ff9800;
+        }
+
+        .alert-item.danger {
+            background: rgba(244, 67, 54, 0.2);
+            border-right: 3px solid #f44336;
+        }
+
+        .alert-item.info {
+            background: rgba(33, 150, 243, 0.2);
+            border-right: 3px solid #2196f3;
+        }
+
+        .alert-time {
+            font-size: clamp(0.55rem, 1.2vw, 0.7rem);
+            color: var(--text-muted);
+            margin-top: clamp(3px, 0.5vw, 5px);
+        }
+
+        .alerts-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: clamp(3px, 0.5vw, 6px);
+            padding: clamp(2px, 0.5vw, 4px) clamp(6px, 1vw, 12px);
+            background: var(--bg-card);
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-size: clamp(0.55rem, 1.2vw, 0.75rem);
+            color: var(--text-primary);
+        }
+
+        .alerts-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #f44336;
+            color: white;
+            font-size: clamp(0.55rem, 1.2vw, 0.7rem);
+            padding: 2px 5px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .alerts-badge.active {
+            display: block;
+            animation: bounce 0.5s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 8px;
+            flex: 1;
+            width: 100%;
+            padding: 8px;
+            min-height: 0;
+            max-height: 100%;
+            overflow: hidden;
+        }
+
+        /* Desktop - 2x2 grid stretched */
+        @media (min-width: 1024px) { 
+            .dashboard { 
+                gap: 15px;
+                padding: 10px;
+            } 
+        }
+        
+        /* Tablet landscape */
+        @media (min-width: 768px) and (max-width: 1023px) { 
+            .dashboard { 
+                gap: 10px;
+                padding: 8px;
+            } 
+        }
+        
+        /* Tablet portrait & large phones */
+        @media (max-width: 767px) { 
+            .dashboard { 
+                gap: 6px;
+                padding: 5px;
+            } 
+        }
+        
+        /* Small phones */
+        @media (max-width: 480px) { 
+            .dashboard { 
+                gap: 4px;
+                padding: 3px;
+            } 
+        }
+
+        .sensor-card {
+            background: var(--bg-card);
+            border-radius: clamp(6px, 1vw, 12px);
+            padding: clamp(6px, 1.2vh, 15px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .sensor-card:hover {
+            transform: scale(1.01);
+            box-shadow: 0 5px 20px var(--shadow-color);
+            background: var(--bg-card-hover);
+        }
+
+        .sensor-card.alert {
+            border: 2px solid #f44336;
+            animation: alertPulse 1s ease infinite;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4); }
+            50% { box-shadow: 0 0 20px 10px rgba(244, 67, 54, 0.2); }
+        }
+
+        .sensor-card.warning { border: 2px solid #ff9800; }
+        
+        .sensor-card.disconnected {
+            border: 2px dashed #9e9e9e;
+            opacity: 0.7;
+        }
+        
+        .sensor-card.disconnected::after {
+            content: '⚠️ לא מחובר';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #ff9800;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: var(--font-small);
+            z-index: 10;
+        }
+
+        .alert-indicator {
+            position: absolute;
+            top: clamp(5px, 1vw, 10px);
+            left: clamp(5px, 1vw, 10px);
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            display: none;
+        }
+
+        .sensor-card.alert .alert-indicator,
+        .sensor-card.warning .alert-indicator { display: block; }
+
+        .sensor-title {
+            text-align: center;
+            font-size: clamp(0.6rem, 1.5vw, 0.9rem);
+            margin-bottom: clamp(3px, 0.8vh, 8px);
+            color: var(--text-secondary);
+            white-space: nowrap;
+            flex-shrink: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0;
+        }
+
+        .sensor-icon {
+            font-size: clamp(0.9rem, 2vw, 1.3rem);
+            margin-left: clamp(2px, 0.5vw, 5px);
+        }
+
+        .gauge-container {
+            position: relative;
+            width: min(38vw, 18vh, 140px);
+            height: min(38vw, 18vh, 140px);
+            margin: 0 auto;
+            flex-shrink: 1;
+        }
+        
+        @media (min-width: 1024px) {
+            .gauge-container {
+                width: min(16vw, 20vh, 160px);
+                height: min(16vw, 20vh, 160px);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gauge-container {
+                width: min(30vw, 15vh, 110px);
+                height: min(30vw, 15vh, 110px);
+            }
+        }
+
+        .gauge-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 10;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .gauge-progress.gas { stroke: url(#gasGradient); }
+        .gauge-progress.water { stroke: url(#waterGradient); }
+        .gauge-progress.electricity { stroke: url(#electricityGradient); }
+        .gauge-progress.temperature { stroke: url(#temperatureGradient); }
+
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 80%;
+        }
+
+        .current-value {
+            font-size: clamp(1.2rem, 4vw, 2.2rem);
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px var(--accent-glow);
+            line-height: 1.1;
+        }
+
+        .unit {
+            font-size: clamp(0.55rem, 1.2vw, 0.85rem);
+            color: var(--text-muted);
+        }
+
+        .history-section {
+            margin-top: auto;
+            padding-top: clamp(4px, 1vh, 10px);
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .history-title {
+            font-size: clamp(0.5rem, 1.2vw, 0.75rem);
+            color: var(--text-muted);
+            margin-bottom: clamp(2px, 0.5vh, 5px);
+            text-align: center;
+        }
+
+        .history-value {
+            font-size: clamp(0.9rem, 2.5vw, 1.5rem);
+            font-weight: bold;
+            text-align: center;
+            color: #64ffda;
+            text-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+        }
+
+        .history-progress {
+            margin-top: clamp(3px, 0.5vh, 6px);
+            background: var(--border-color);
+            border-radius: 8px;
+            height: clamp(4px, 0.8vh, 6px);
+            overflow: hidden;
+        }
+
+        .history-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .history-progress-bar.gas { background: linear-gradient(90deg, #ff6b6b, #ffa06b); }
+        .history-progress-bar.water { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+        .history-progress-bar.electricity { background: linear-gradient(90deg, #f9d423, #ff4e50); }
+        .history-progress-bar.temperature { background: linear-gradient(90deg, #667eea, #764ba2); }
+
+        .target-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: clamp(0.45rem, 1vw, 0.65rem);
+            color: var(--text-muted);
+            margin-top: clamp(2px, 0.4vh, 5px);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 3px;
+            color: var(--text-muted);
+            font-size: clamp(0.45rem, 0.8vw, 0.6rem);
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        
+        .footer p {
+            margin: 2px 0;
+        }
+
+        .last-update {
+            font-size: clamp(0.55rem, 1.2vw, 0.75rem);
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: clamp(5px, 1vw, 10px);
+            flex-shrink: 0;
+        }
+
+        /* Charts in modal - no separate section needed */
+
+        .chart-tabs {
+            display: flex;
+            justify-content: center;
+            gap: clamp(4px, 1vw, 10px);
+            margin-bottom: clamp(10px, 2vw, 20px);
+            flex-wrap: wrap;
+        }
+
+        .chart-tab {
+            padding: clamp(4px, 1vw, 8px) clamp(8px, 2vw, 20px);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: var(--font-small);
+        }
+
+        .chart-tab:hover, .chart-tab.active {
+            background: var(--accent-color);
+            color: #1a1a2e;
+            border-color: var(--accent-color);
+        }
+
+        .chart-wrapper {
+            display: none;
+            height: clamp(200px, 35vh, 350px);
+            padding: clamp(5px, 1vw, 10px);
+            background: var(--bg-card);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chart-wrapper.active { display: block; }
+
+        .chart-period-selector {
+            display: flex;
+            justify-content: center;
+            gap: clamp(5px, 1vw, 10px);
+            margin-bottom: clamp(8px, 1.5vw, 15px);
+        }
+
+        .period-btn {
+            padding: clamp(3px, 0.8vw, 5px) clamp(8px, 1.5vw, 15px);
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: var(--font-small);
+        }
+
+        .period-btn:hover, .period-btn.active {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .settings-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .settings-btn:hover {
+            background: var(--accent-glow);
+            transform: rotate(90deg);
+        }
+
+        .settings-panel {
+            position: fixed;
+            bottom: clamp(55px, 10vw, 80px);
+            left: clamp(10px, 2vw, 20px);
+            right: clamp(10px, 2vw, 20px);
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: clamp(12px, 2vw, 20px);
+            border: 1px solid var(--border-color);
+            display: none;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 10px 40px var(--shadow-color);
+        }
+
+        .settings-panel.active { display: block; }
+
+        .settings-panel h3 {
+            color: var(--accent-color);
+            margin-bottom: clamp(10px, 2vw, 15px);
+            font-size: var(--font-normal);
+        }
+
+        .settings-tabs {
+            display: flex;
+            gap: 3px;
+            margin-bottom: clamp(10px, 2vw, 15px);
+        }
+
+        .settings-tab {
+            flex: 1;
+            padding: clamp(5px, 1vw, 8px);
+            border: none;
+            background: var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+        }
+
+        .settings-tab.active {
+            background: var(--accent-color);
+            color: #1a1a2e;
+        }
+
+        .settings-content { display: none; }
+        .settings-content.active { display: block; }
+
+        .setting-item { margin-bottom: clamp(10px, 2vw, 15px); }
+
+        .setting-item label {
+            display: block;
+            margin-bottom: clamp(3px, 0.5vw, 5px);
+            color: var(--text-muted);
+            font-size: var(--font-small);
+        }
+
+        .setting-item input, .setting-item select {
+            width: 100%;
+            padding: clamp(6px, 1.5vw, 10px);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: var(--font-small);
+        }
+
+        .setting-item input:focus, .setting-item select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .setting-row {
+            display: flex;
+            gap: clamp(5px, 1vw, 10px);
+        }
+
+        .setting-row .setting-item { flex: 1; }
+
+        .btn-save {
+            width: 100%;
+            padding: clamp(8px, 1.5vw, 12px);
+            background: var(--accent-color);
+            border: none;
+            border-radius: 8px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: clamp(5px, 1vw, 10px);
+            transition: all 0.3s ease;
+            font-size: var(--font-small);
+        }
+
+        .btn-save:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary { background: #64ffda; }
+        .btn-danger { background: #f44336; color: white; }
+
+        .pwa-install-banner {
+            position: fixed;
+            bottom: clamp(55px, 10vw, 80px);
+            right: clamp(10px, 2vw, 20px);
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: clamp(10px, 2vw, 15px) clamp(12px, 2vw, 20px);
+            border: 1px solid var(--accent-color);
+            display: none;
+            z-index: 100;
+            box-shadow: 0 10px 40px var(--shadow-color);
+            max-width: min(300px, 90vw);
+        }
+
+        .pwa-install-banner.active {
+            display: block;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .pwa-install-banner h4 {
+            color: var(--accent-color);
+            margin-bottom: clamp(6px, 1.5vw, 10px);
+            font-size: var(--font-normal);
+        }
+
+        .pwa-install-banner p {
+            font-size: var(--font-small);
+            color: var(--text-muted);
+            margin-bottom: clamp(10px, 2vw, 15px);
+        }
+
+        .pwa-buttons {
+            display: flex;
+            gap: clamp(5px, 1.5vw, 10px);
+        }
+
+        .pwa-buttons button {
+            flex: 1;
+            padding: clamp(5px, 1vw, 8px);
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: var(--font-small);
+        }
+
+        .pwa-install-btn { background: var(--accent-color); color: #1a1a2e; }
+        .pwa-dismiss-btn { background: var(--border-color); color: var(--text-secondary); }
+
+        .toast-container {
+            position: fixed;
+            bottom: clamp(10px, 2vw, 20px);
+            right: clamp(55px, 10vw, 80px);
+            z-index: 1001;
+            max-width: min(350px, 80vw);
+        }
+
+        .toast {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: clamp(10px, 2vw, 15px) clamp(12px, 2vw, 20px);
+            margin-bottom: clamp(5px, 1vw, 10px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 5px 20px var(--shadow-color);
+            display: flex;
+            align-items: center;
+            gap: clamp(6px, 1.5vw, 10px);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { border-right: 4px solid #4caf50; }
+        .toast.warning { border-right: 4px solid #ff9800; }
+        .toast.error { border-right: 4px solid #f44336; }
+        .toast.info { border-right: 4px solid #2196f3; }
+
+        .toast-icon { font-size: clamp(1rem, 3vw, 1.5rem); }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: bold; font-size: var(--font-small); }
+        .toast-message { font-size: clamp(0.6rem, 1.3vw, 0.8rem); color: var(--text-muted); }
+
+        .stats-comparison {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: clamp(5px, 1.5vw, 15px);
+            margin-top: clamp(10px, 2vw, 20px);
+        }
+
+        @media (max-width: 600px) {
+            .stats-comparison { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .stat-card {
+            background: var(--chart-bg);
+            border-radius: clamp(6px, 1.5vw, 10px);
+            padding: clamp(8px, 1.5vw, 15px);
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: clamp(0.55rem, 1.3vw, 0.75rem);
+            color: var(--text-muted);
+            margin-bottom: clamp(3px, 0.5vw, 5px);
+        }
+
+        .stat-value {
+            font-size: clamp(0.9rem, 2.5vw, 1.5rem);
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .stat-change {
+            font-size: clamp(0.55rem, 1.3vw, 0.75rem);
+            margin-top: clamp(3px, 0.5vw, 5px);
+        }
+
+        .stat-change.positive { color: #f44336; }
+        .stat-change.negative { color: #4caf50; }
+
+        @media (max-width: 400px) {
+            .alerts-btn span:not(.alerts-badge):last-child { display: none; }
+        }
+
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+        }
+
+        /* Landscape mode on tablets/phones */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .gauge-container { 
+                width: min(15vh, 100px) !important;
+                height: min(15vh, 100px) !important;
+            }
+            .chart-wrapper { height: 50vh; }
+            .header h1 { font-size: 0.8rem; }
+            .sensor-title { font-size: 0.55rem; }
+            .current-value { font-size: 0.9rem; }
+            .history-section { padding-top: 2px; }
+            .history-title { font-size: 0.45rem; }
+            .history-value { font-size: 0.75rem; }
+            .target-info { font-size: 0.4rem; }
+        }
+        
+        /* Very wide screens */
+        @media (min-width: 1600px) {
+            .gauge-container {
+                width: min(15vw, 250px) !important;
+                height: min(15vw, 250px) !important;
+            }
+            .current-value { font-size: 2.5rem; }
+        }
+
+        /* Charts Modal */
+        .charts-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .charts-modal-overlay.active {
+            display: flex;
+        }
+
+        .charts-modal {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .charts-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            z-index: 10;
+        }
+
+        .charts-modal-header h2 {
+            color: var(--accent-color);
+            margin: 0;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+        }
+
+        .charts-modal-close {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .charts-modal-close:hover {
+            background: #f44336;
+            color: white;
+        }
+
+        .charts-modal-content {
+            padding: 20px;
+        }
+
+        .charts-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 60px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(100, 255, 218, 0.2);
+            border: 2px solid #64ffda;
+            color: #64ffda;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .charts-btn:hover {
+            background: rgba(100, 255, 218, 0.4);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <!-- DEV1 Banner -->
+    <div class="dev-banner">🔧 DEV1 - פורט 3002</div>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+
+    <!-- SVG Gradients -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <linearGradient id="gasGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff6b6b"/>
+                <stop offset="100%" style="stop-color:#ffa06b"/>
+            </linearGradient>
+            <linearGradient id="waterGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4facfe"/>
+                <stop offset="100%" style="stop-color:#00f2fe"/>
+            </linearGradient>
+            <linearGradient id="electricityGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#f9d423"/>
+                <stop offset="100%" style="stop-color:#ff4e50"/>
+            </linearGradient>
+            <linearGradient id="temperatureGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#667eea"/>
+                <stop offset="100%" style="stop-color:#764ba2"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner" id="alertBanner">
+        <span id="alertBannerText">⚠️ התראה: חריגה מיעד צריכה!</span>
+        <button class="close-alert" onclick="closeAlertBanner()">סגור</button>
+    </div>
+
+    <!-- Alerts Panel -->
+    <div class="alerts-panel" id="alertsPanel">
+        <h3>🔔 התראות</h3>
+        <div id="alertsList"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- PWA Install Banner -->
+    <div class="pwa-install-banner" id="pwaInstallBanner">
+        <h4>📱 התקן כאפליקציה</h4>
+        <p>הוסף את הדשבורד למסך הבית לגישה מהירה וחוויה טובה יותר</p>
+        <div class="pwa-buttons">
+            <button class="pwa-install-btn" onclick="installPWA()">התקן</button>
+            <button class="pwa-dismiss-btn" onclick="dismissPWA()">לא עכשיו</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>🏠 דשבורד חיישני הבית - DEV1</h1>
+        <div class="datetime" id="datetime"></div>
+        <div class="header-controls">
+            <div class="connection-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="connectionText">מחובר ל-Tuya</span>
+            </div>
+            <!-- Theme toggle removed - dark mode only -->
+            <button class="alerts-btn" onclick="toggleAlerts()">
+                🔔 התראות
+                <span class="alerts-badge" id="alertsBadge">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Gas Sensor -->
+        <div class="sensor-card" id="gasCard">
+            <span class="alert-indicator">⚠️</span>
+            <div class="sensor-title">
+                <span class="sensor-icon">🔥</span>
+                צריכת גז
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress gas" cx="50" cy="50" r="40" 
+                            id="gasGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="gasValue">0.0</div>
+                    <div class="unit">m³/שעה</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="gasMonthly">0 m³</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar gas" id="gasProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="gasTarget">50</span> m³</span>
+                    <span id="gasPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="gasLastUpdate">--</span></div>
+        </div>
+
+        <!-- Water Sensor -->
+        <div class="sensor-card" id="waterCard">
+            <span class="alert-indicator">⚠️</span>
+            <div class="sensor-title">
+                <span class="sensor-icon">💧</span>
+                צריכת מים
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress water" cx="50" cy="50" r="40"
+                            id="waterGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="waterValue">0.0</div>
+                    <div class="unit">ליטר/דקה</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="waterMonthly">0 m³</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar water" id="waterProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="waterTarget">15</span> m³</span>
+                    <span id="waterPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="waterLastUpdate">--</span></div>
+        </div>
+
+        <!-- Electricity Sensor -->
+        <div class="sensor-card" id="electricityCard">
+            <span class="alert-indicator">⚠️</span>
+            <div class="sensor-title">
+                <span class="sensor-icon">⚡</span>
+                צריכת חשמל
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress electricity" cx="50" cy="50" r="40"
+                            id="electricityGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="electricityValue">0</div>
+                    <div class="unit">וואט</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">סה"כ החודש</div>
+                <div class="history-value" id="electricityMonthly">0 kWh</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar electricity" id="electricityProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>יעד: <span id="electricityTarget">500</span> kWh</span>
+                    <span id="electricityPercent">0%</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="electricityLastUpdate">--</span></div>
+        </div>
+
+        <!-- Water Heater Temperature -->
+        <div class="sensor-card" id="temperatureCard">
+            <span class="alert-indicator">⚠️</span>
+            <div class="sensor-title">
+                <span class="sensor-icon">🌡️</span>
+                טמפרטורת דוד מים
+            </div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-progress temperature" cx="50" cy="50" r="40"
+                            id="temperatureGauge"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="251.2"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="current-value" id="temperatureValue">0</div>
+                    <div class="unit">°C</div>
+                </div>
+            </div>
+            <div class="history-section">
+                <div class="history-title">ממוצע יומי</div>
+                <div class="history-value" id="temperatureAvg">0°C</div>
+                <div class="history-progress">
+                    <div class="history-progress-bar temperature" id="temperatureProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="target-info">
+                    <span>טווח מומלץ: 55-65°C</span>
+                    <span id="temperatureStatus">תקין</span>
+                </div>
+            </div>
+            <div class="last-update">עדכון אחרון: <span id="temperatureLastUpdate">--</span></div>
+        </div>
+    </div>
+
+    <!-- Charts Modal Overlay -->
+    <div class="charts-modal-overlay" id="chartsModal">
+        <div class="charts-modal">
+            <div class="charts-modal-header">
+                <h2>📊 גרפים וסטטיסטיקות</h2>
+                <button class="charts-modal-close" onclick="toggleChartsModal()">✕</button>
+            </div>
+            <div class="charts-modal-content">
+                <div class="chart-tabs">
+                    <button class="chart-tab active" onclick="switchChart('gas', this)">🔥 גז</button>
+                    <button class="chart-tab" onclick="switchChart('water', this)">💧 מים</button>
+                    <button class="chart-tab" onclick="switchChart('electricity', this)">⚡ חשמל</button>
+                    <button class="chart-tab" onclick="switchChart('watt', this)">⚡ הספק (וואט)</button>
+                    <button class="chart-tab" onclick="switchChart('temperature', this)">🌡️ טמפרטורה</button>
+                    <button class="chart-tab" onclick="switchChart('comparison', this)">📈 השוואה</button>
+                </div>
+
+                <div class="chart-period-selector">
+                    <button class="period-btn" onclick="changePeriod(1, this)">יום אחד</button>
+                    <button class="period-btn active" onclick="changePeriod(7, this)">7 ימים</button>
+                    <button class="period-btn" onclick="changePeriod(14, this)">14 ימים</button>
+                    <button class="period-btn" onclick="changePeriod(24, this)">24 ימים</button>
+                    <button class="period-btn" onclick="changePeriod(30, this)">30 ימים</button>
+                </div>
+
+                <div class="chart-wrapper active" id="gasChartWrapper">
+                    <canvas id="gasChartCanvas"></canvas>
+                </div>
+                <div class="chart-wrapper" id="waterChartWrapper">
+                    <canvas id="waterChartCanvas"></canvas>
+                </div>
+                <div class="chart-wrapper" id="electricityChartWrapper">
+                    <canvas id="electricityChartCanvas"></canvas>
+                </div>
+                <div class="chart-wrapper" id="wattChartWrapper">
+                    <canvas id="wattChartCanvas"></canvas>
+                </div>
+                <div class="chart-wrapper" id="temperatureChartWrapper">
+                    <canvas id="temperatureChartCanvas"></canvas>
+                </div>
+                <div class="chart-wrapper" id="comparisonChartWrapper">
+                    <canvas id="comparisonChartCanvas"></canvas>
+                </div>
+
+                <!-- Statistics Comparison -->
+                <div class="stats-comparison">
+                    <div class="stat-card">
+                        <div class="stat-label">גז - החודש vs קודם</div>
+                        <div class="stat-value" id="gasCompare">--</div>
+                        <div class="stat-change" id="gasChange">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">מים - החודש vs קודם</div>
+                        <div class="stat-value" id="waterCompare">--</div>
+                        <div class="stat-change" id="waterChange">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">חשמל - החודש vs קודם</div>
+                        <div class="stat-value" id="electricityCompare">--</div>
+                        <div class="stat-change" id="electricityChange">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">טמפ׳ ממוצעת</div>
+                        <div class="stat-value" id="tempCompare">--</div>
+                        <div class="stat-change" id="tempChange">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Tuya Smart Integration | DEV1</p>
+    </div>
+    </div> <!-- End main-container -->
+
+    <!-- Charts Button -->
+    <button class="charts-btn" id="chartsBtn" onclick="toggleChartsModal()">📊</button>
+
+    <!-- Settings Button -->
+    <button class="settings-btn" id="settingsBtn">⚙️</button>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <h3>⚙️ הגדרות</h3>
+        
+        <div class="settings-tabs">
+            <button class="settings-tab active" onclick="switchSettingsTab('tuya', this)">Tuya</button>
+            <button class="settings-tab" onclick="switchSettingsTab('targets', this)">יעדים</button>
+            <button class="settings-tab" onclick="switchSettingsTab('alerts', this)">התראות</button>
+        </div>
+
+        <!-- Tuya Settings -->
+        <div class="settings-content active" id="tuyaSettings">
+            <div class="setting-item">
+                <label>Access ID</label>
+                <input type="text" id="tuyaAccessId" placeholder="הזן Access ID">
+            </div>
+            <div class="setting-item">
+                <label>Access Secret</label>
+                <input type="password" id="tuyaAccessSecret" placeholder="הזן Access Secret">
+            </div>
+            <div class="setting-item">
+                <label>Device ID - גז</label>
+                <input type="text" id="gasDeviceId" placeholder="הזן Device ID">
+            </div>
+            <div class="setting-item">
+                <label>Device ID - מים</label>
+                <input type="text" id="waterDeviceId" placeholder="הזן Device ID">
+            </div>
+            <div class="setting-item">
+                <label>Device ID - חשמל</label>
+                <input type="text" id="electricityDeviceId" placeholder="הזן Device ID">
+            </div>
+            <div class="setting-item">
+                <label>Device ID - טמפרטורה</label>
+                <input type="text" id="temperatureDeviceId" placeholder="הזן Device ID">
+            </div>
+        </div>
+
+        <!-- Targets Settings -->
+        <div class="settings-content" id="targetsSettings">
+            <div class="setting-row">
+                <div class="setting-item">
+                    <label>יעד גז (m³)</label>
+                    <input type="number" id="gasTargetInput" value="50">
+                </div>
+                <div class="setting-item">
+                    <label>יעד מים (m³)</label>
+                    <input type="number" id="waterTargetInput" value="15">
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-item">
+                    <label>יעד חשמל (kWh)</label>
+                    <input type="number" id="electricityTargetInput" value="500">
+                </div>
+                <div class="setting-item">
+                    <label>טמפ׳ מומלצת (°C)</label>
+                    <input type="number" id="temperatureTargetInput" value="60">
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Settings - High/Low -->
+        <div class="settings-content" id="alertsSettings">
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="alertsEnabled" checked>
+                    התראות פעילות
+                </label>
+            </div>
+            <div class="setting-row">
+                <div class="setting-item">
+                    <label>נמוך - התראה מתחת ל (°C)</label>
+                    <input type="number" id="tempAlertLow" value="55" min="20" max="80" placeholder="55">
+                </div>
+                <div class="setting-item">
+                    <label>גבוה - התראה מעל (°C)</label>
+                    <input type="number" id="tempAlertHigh" value="65" min="30" max="100" placeholder="65">
+                </div>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="enableNotifications" checked>
+                    הפעל התראות Push
+                </label>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="enableSound" checked>
+                    הפעל צליל התראה
+                </label>
+            </div>
+        </div>
+
+        <!-- Display Settings removed - dark mode only -->
+
+        <button class="btn-save" onclick="saveSettings()">💾 שמור הגדרות</button>
+        <button class="btn-save btn-secondary" onclick="exportData()">📤 ייצוא נתונים</button>
+        <button class="btn-save btn-danger" onclick="clearAlerts()">🗑️ נקה התראות</button>
+        <button class="btn-save btn-danger" onclick="resetAllData()">🔄 איפוס כל הנתונים</button>
+    </div>
+
+    <script>
+        // ========================================
+        // DEV1 Configuration & State Management
+        // ========================================
+        
+        const CONFIG = {
+            UPDATE_INTERVAL: 5000,
+            STORAGE_KEY: 'sensorDashboardData_dev1',
+            SETTINGS_KEY: 'sensorDashboardSettings_dev1',
+            ALERTS_KEY: 'sensorDashboardAlerts_dev1',
+            TARGETS: {
+                gas: 50,
+                water: 15,
+                electricity: 500,
+                temperature: { min: 55, max: 65, optimal: 60 }
+            },
+            ALERTS_ENABLED: true,
+            TEMP_ALERT_LOW: 55,
+            TEMP_ALERT_HIGH: 65
+        };
+
+        let sensorData = {
+            gas: { current: '0', monthly: '0', daily: [], history: [] },
+            water: { current: '0', monthly: '0', daily: [], history: [] },
+            electricity: { current: 0, monthly: 0, daily: [], history: [] },
+            temperature: { current: 0, average: 0, daily: [], history: [] }
+        };
+
+        let alerts = [];
+        let charts = {};
+        let deferredPrompt = null;
+        let currentChartPeriod = 7;
+        window.dashboardInitialized = false;
+
+        // PWA Installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+                if (deferredPrompt && !localStorage.getItem('pwaDismissed_dev1')) {
+                    document.getElementById('pwaInstallBanner').classList.add('active');
+                }
+            }, 30000);
+        });
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showToast('success', 'התקנה הושלמה', 'האפליקציה נוספה למסך הבית');
+                }
+                deferredPrompt = null;
+                document.getElementById('pwaInstallBanner').classList.remove('active');
+            }
+        }
+
+        function dismissPWA() {
+            document.getElementById('pwaInstallBanner').classList.remove('active');
+            localStorage.setItem('pwaDismissed_dev1', 'true');
+        }
+
+        // Theme Management - Dark mode only
+        function applyTheme() {
+            document.body.setAttribute('data-theme', 'dark');
+            updateChartsTheme();
+        }
+
+        function updateChartsTheme() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#e6e6e6' : '#333';
+            const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.options && chart.options.scales) {
+                    if (chart.options.scales.x) {
+                        chart.options.scales.x.ticks.color = textColor;
+                        chart.options.scales.x.grid.color = gridColor;
+                    }
+                    if (chart.options.scales.y) {
+                        chart.options.scales.y.ticks.color = textColor;
+                        chart.options.scales.y.grid.color = gridColor;
+                    }
+                    if (chart.options.scales.r) {
+                        chart.options.scales.r.ticks.color = textColor;
+                        chart.options.scales.r.grid.color = gridColor;
+                        chart.options.scales.r.pointLabels.color = textColor;
+                    }
+                    chart.options.plugins.legend.labels.color = textColor;
+                    chart.update();
+                }
+            });
+        }
+
+        // Sensor Connectivity Check
+        function checkSensorConnectivity() {
+            const disconnectedSensors = [];
+            
+            const sensors = [
+                { key: 'gas', name: 'גז', icon: '🔥' },
+                { key: 'water', name: 'מים', icon: '💧' },
+                { key: 'electricity', name: 'חשמל', icon: '⚡' },
+                { key: 'temperature', name: 'טמפרטורה', icon: '🌡️' }
+            ];
+            
+            sensors.forEach(sensor => {
+                const data = sensorData[sensor.key];
+                const card = document.getElementById(`${sensor.key}Card`);
+                
+                // Get device ID from config
+                const deviceId = CONFIG.tuya?.devices?.[sensor.key.toUpperCase()] || 
+                                CONFIG.tuya?.devices?.[sensor.key] || '';
+                
+                // Check if sensor has REAL data (not just zeros)
+                let hasRealData = false;
+                if (data) {
+                    if (sensor.key === 'electricity') {
+                        // Electricity is connected if current power > 0 OR has voltage reading
+                        hasRealData = data.current > 0 || data.voltage > 0 || data.todayEnergy > 0;
+                    } else if (sensor.key === 'temperature') {
+                        // Temperature is connected if has reading
+                        hasRealData = data.current > 0;
+                    } else {
+                        // Gas/Water - check if device ID exists (since they might be 0 legitimately)
+                        hasRealData = !!deviceId && deviceId.length > 3;
+                    }
+                }
+                
+                if (!deviceId || deviceId.length < 3) {
+                    // No device ID configured
+                    disconnectedSensors.push({ ...sensor, status: 'לא מוגדר' });
+                    if (card) card.classList.add('disconnected');
+                } else if (!hasRealData && (sensor.key === 'electricity' || sensor.key === 'temperature')) {
+                    // Device configured but no data for elec/temp
+                    disconnectedSensors.push({ ...sensor, status: 'ממתין לנתונים' });
+                    if (card) card.classList.add('disconnected');
+                } else {
+                    // Connected (has device ID and data, or gas/water with device ID)
+                    if (card) card.classList.remove('disconnected');
+                }
+            });
+            
+            // Update connection status in header
+            const statusDot = document.getElementById('statusDot');
+            const connectionText = document.getElementById('connectionText');
+            
+            const connectedCount = 4 - disconnectedSensors.length;
+            if (disconnectedSensors.length === 0) {
+                statusDot.className = 'status-dot';
+                connectionText.textContent = 'כל החיישנים מחוברים';
+            } else if (connectedCount > 0) {
+                statusDot.className = 'status-dot warning';
+                connectionText.textContent = `${connectedCount} חיישנים פעילים`;
+            } else {
+                statusDot.className = 'status-dot error';
+                connectionText.textContent = 'אין חיישנים מוגדרים';
+            }
+            
+            return disconnectedSensors;
+        }
+
+        // Alert System - High/Low (no target-based alerts)
+        function checkAlerts() {
+            const newAlerts = [];
+            
+            checkSensorConnectivity();
+            
+            if (!CONFIG.ALERTS_ENABLED) {
+                document.getElementById('gasCard')?.classList.remove('warning', 'alert');
+                document.getElementById('waterCard')?.classList.remove('warning', 'alert');
+                document.getElementById('electricityCard')?.classList.remove('warning', 'alert');
+                document.getElementById('temperatureCard')?.classList.remove('warning', 'alert');
+                return;
+            }
+            
+            document.getElementById('gasCard')?.classList.remove('warning', 'alert');
+            document.getElementById('waterCard')?.classList.remove('warning', 'alert');
+            document.getElementById('electricityCard')?.classList.remove('warning', 'alert');
+            
+            const temp = parseFloat(sensorData.temperature?.current) || 0;
+            const low = CONFIG.TEMP_ALERT_LOW ?? 55;
+            const high = CONFIG.TEMP_ALERT_HIGH ?? 65;
+            
+            if (temp < low || temp > high) {
+                const alertType = temp < 45 || temp > 75 ? 'danger' : 'warning';
+                const msg = temp < low ? `הטמפרטורה נמוכה: ${temp}°C (מתחת ל-${low}°C)` : `הטמפרטורה גבוהה: ${temp}°C (מעל ${high}°C)`;
+                newAlerts.push({ type: alertType, sensor: 'temperature', title: 'טמפרטורת דוד', message: msg, timestamp: new Date().toISOString() });
+                document.getElementById('temperatureCard')?.classList.add(alertType);
+            } else {
+                document.getElementById('temperatureCard')?.classList.remove('warning', 'alert');
+            }
+            
+            newAlerts.forEach(alert => {
+                const exists = alerts.find(a => a.sensor === alert.sensor && a.type === alert.type && new Date(a.timestamp).getTime() > Date.now() - 3600000);
+                if (!exists) {
+                    alerts.unshift(alert);
+                    showToast(alert.type === 'danger' ? 'error' : 'warning', alert.title, alert.message);
+                    if (alert.type === 'danger') {
+                        showAlertBanner(alert.message);
+                        playAlertSound();
+                    }
+                }
+            });
+            
+            alerts = alerts.slice(0, 50);
+            updateAlertsUI();
+            saveAlerts();
+        }
+
+        function showAlertBanner(message) {
+            const banner = document.getElementById('alertBanner');
+            document.getElementById('alertBannerText').textContent = `⚠️ התראה: ${message}`;
+            banner.classList.add('active');
+        }
+
+        function closeAlertBanner() {
+            document.getElementById('alertBanner').classList.remove('active');
+        }
+
+        function updateAlertsUI() {
+            const badge = document.getElementById('alertsBadge');
+            const list = document.getElementById('alertsList');
+            const activeAlerts = alerts.filter(a => new Date(a.timestamp).getTime() > Date.now() - 86400000);
+            badge.textContent = activeAlerts.length;
+            badge.classList.toggle('active', activeAlerts.length > 0);
+            list.innerHTML = activeAlerts.length === 0 ? '<p style="color: var(--text-muted); text-align: center;">אין התראות חדשות</p>' : activeAlerts.map(alert => `<div class="alert-item ${alert.type}"><strong>${alert.title}</strong><p>${alert.message}</p><div class="alert-time">${new Date(alert.timestamp).toLocaleString('he-IL')}</div></div>`).join('');
+        }
+
+        function toggleAlerts() {
+            document.getElementById('alertsPanel').classList.toggle('active');
+        }
+
+        function clearAlerts() {
+            alerts = [];
+            updateAlertsUI();
+            saveAlerts();
+            showToast('success', 'התראות נוקו', 'כל ההתראות נמחקו');
+        }
+
+        async function resetAllData() {
+            if (!confirm('האם אתה בטוח שברצונך לאפס את כל הנתונים וההיסטוריה?')) return;
+            try {
+                const response = await fetch('/api/reset', { method: 'POST' });
+                if (response.ok) {
+                    localStorage.removeItem(CONFIG.STORAGE_KEY);
+                    localStorage.removeItem(CONFIG.ALERTS_KEY);
+                    sensorData = { gas: { current: 0, monthly: 0, daily: [] }, water: { current: 0, monthly: 0, daily: [] }, electricity: { current: 0, monthly: 0, daily: [] }, temperature: { current: 0, average: 0, daily: [] } };
+                    alerts = [];
+                    updateDisplay();
+                    updateAlertsUI();
+                    showToast('success', 'נתונים אופסו', 'כל הנתונים וההיסטוריה נמחקו בהצלחה');
+                } else {
+                    throw new Error('Server reset failed');
+                }
+            } catch (e) {
+                localStorage.removeItem(CONFIG.STORAGE_KEY);
+                localStorage.removeItem(CONFIG.ALERTS_KEY);
+                showToast('warning', 'איפוס חלקי', 'הנתונים המקומיים אופסו. רענן את הדף.');
+                setTimeout(() => location.reload(), 2000);
+            }
+        }
+
+        function playAlertSound() {
+            if (!document.getElementById('enableSound')?.checked) return;
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            setTimeout(() => oscillator.stop(), 200);
+        }
+
+        function saveAlerts() {
+            localStorage.setItem(CONFIG.ALERTS_KEY, JSON.stringify(alerts));
+        }
+
+        function loadAlerts() {
+            try {
+                const saved = localStorage.getItem(CONFIG.ALERTS_KEY);
+                if (saved) alerts = JSON.parse(saved);
+            } catch (e) {}
+        }
+
+        // Toast Notifications
+        function showToast(type, title, message) {
+            const container = document.getElementById('toastContainer');
+            const icons = { success: '✅', warning: '⚠️', error: '🚨', info: 'ℹ️' };
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-message">${message}</div></div>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Charts
+        function initCharts() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#e6e6e6' : '#333';
+            const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+            const defaultOptions = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', labels: { color: textColor } } },
+                scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } }
+            };
+
+            charts.gas = new Chart(document.getElementById('gasChartCanvas'), { type: 'line', data: { labels: [], datasets: [{ label: 'צריכת גז (m³)', data: [], borderColor: '#ff6b6b', backgroundColor: 'rgba(255, 107, 107, 0.2)', fill: true, tension: 0.4 }] }, options: { ...defaultOptions } });
+            charts.water = new Chart(document.getElementById('waterChartCanvas'), { type: 'line', data: { labels: [], datasets: [{ label: 'צריכת מים (m³)', data: [], borderColor: '#4facfe', backgroundColor: 'rgba(79, 172, 254, 0.2)', fill: true, tension: 0.4 }] }, options: { ...defaultOptions } });
+            charts.electricity = new Chart(document.getElementById('electricityChartCanvas'), { type: 'bar', data: { labels: [], datasets: [{ label: 'צריכת חשמל (kWh)', data: [], backgroundColor: 'rgba(249, 212, 35, 0.6)', borderColor: '#f9d423', borderWidth: 1 }] }, options: { ...defaultOptions } });
+            charts.watt = new Chart(document.getElementById('wattChartCanvas'), { type: 'line', data: { labels: [], datasets: [{ label: 'הספק (וואט)', data: [], borderColor: '#f9d423', backgroundColor: 'rgba(249, 212, 35, 0.2)', fill: true, tension: 0.4, pointRadius: 2 }] }, options: { ...defaultOptions, scales: { x: { ticks: { color: textColor, maxTicksLimit: 12 }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor }, min: 0, title: { display: true, text: 'וואט', color: textColor } } } } });
+            charts.temperature = new Chart(document.getElementById('temperatureChartCanvas'), { type: 'line', data: { labels: [], datasets: [{ label: 'טמפרטורה (°C)', data: [], borderColor: '#667eea', backgroundColor: 'rgba(102, 126, 234, 0.2)', fill: true, tension: 0.4 }, { label: 'טווח מומלץ', data: [], borderColor: 'rgba(100, 255, 218, 0.5)', borderDash: [5, 5], fill: false, pointRadius: 0 }] }, options: { ...defaultOptions } });
+            charts.comparison = new Chart(document.getElementById('comparisonChartCanvas'), { type: 'radar', data: { labels: ['גז', 'מים', 'חשמל', 'טמפרטורה'], datasets: [{ label: 'החודש', data: [0, 0, 0, 0], backgroundColor: 'rgba(255, 215, 0, 0.2)', borderColor: '#ffd700', pointBackgroundColor: '#ffd700' }, { label: 'יעד', data: [100, 100, 100, 100], backgroundColor: 'rgba(100, 255, 218, 0.2)', borderColor: '#64ffda', pointBackgroundColor: '#64ffda' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } }, scales: { r: { ticks: { color: textColor }, grid: { color: gridColor }, pointLabels: { color: textColor } } } } });
+        }
+
+        // יצירת ציר X: יום אחד = 00:00 עד השעה הנוכחית בלבד (מתקדם בזמן אמת) + חצי שעה ריקה
+        function getXAxisLabels(period) {
+            if (period === 1) {
+                const now = new Date();
+                const labels = [];
+                for (let h = 0; h <= now.getHours(); h++) {
+                    if (h < now.getHours()) {
+                        labels.push(`${String(h).padStart(2, '0')}:00`);
+                    } else {
+                        labels.push(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+                    }
+                }
+                labels.push(''); // חצי שעה ריקה בקצה
+                return labels;
+            }
+            const labels = [];
+            const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+            for (let i = period - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                labels.push(d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }));
+            }
+            labels.push(''); // רווח בקצה
+            return labels;
+        }
+
+        async function updateWattChart() {
+            if (!charts.watt) return;
+            try {
+                await fetchServerData();
+                const period = currentChartPeriod || 7;
+                const response = await fetch(`/api/history?type=electricity&days=${period}`);
+                if (!response.ok) return;
+                const result = await response.json();
+                const rawData = result.success ? (result.data?.electricity || []) : [];
+                const labels = getXAxisLabels(period);
+
+                let values;
+                if (period === 1) {
+                    const now = new Date();
+                    const count = {};
+                    rawData.forEach(h => {
+                        const hour = new Date(h.timestamp).getHours();
+                        const v = parseFloat(h.value) || 0;
+                        if (!count[hour]) count[hour] = { s: 0, n: 0 };
+                        count[hour].s += v;
+                        count[hour].n++;
+                    });
+                    const hourCount = labels.length - 1;
+                    values = labels.slice(0, hourCount).map((_, i) => {
+                        if (i < now.getHours()) return count[i] ? (count[i].s / count[i].n) : 0;
+                        return parseFloat(sensorData.electricity?.current) || (count[now.getHours()] ? (count[now.getHours()].s / count[now.getHours()].n) : 0);
+                    });
+                } else {
+                    const dayVals = {};
+                    rawData.forEach(h => {
+                        const d = new Date(h.timestamp);
+                        const key = d.toDateString();
+                        const v = parseFloat(h.value) || 0;
+                        if (!dayVals[key]) dayVals[key] = [];
+                        dayVals[key].push(v);
+                    });
+                    values = [];
+                    for (let i = period - 1; i >= 0; i--) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        const key = d.toDateString();
+                        const arr = dayVals[key] || [];
+                        values.push(arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+                    }
+                }
+                values.push(null); // רווח חצי שעה בקצה
+
+                charts.watt.data.labels = labels;
+                charts.watt.data.datasets[0].data = values;
+                charts.watt.data.datasets[0].spanGaps = true;
+                if (period === 1 && charts.watt.options.scales?.x) {
+                    charts.watt.options.scales.x.max = labels.length - 1;
+                }
+                const currentVal = parseFloat(sensorData.electricity?.current) || 0;
+                const allVals = values.filter(v => v != null && !isNaN(v));
+                const maxVal = allVals.length ? Math.max(...allVals, currentVal, 1) : Math.max(currentVal, 1);
+                charts.watt.options.scales.y.min = 0;
+                charts.watt.options.scales.y.max = Math.max(Math.ceil(maxVal * 1.2), currentVal * 1.1);
+                charts.watt.update();
+            } catch (e) {
+                console.warn('שגיאה בעדכון גרף הספק:', e);
+            }
+        }
+
+        async function updateCharts() {
+            const types = ['gas', 'water', 'electricity', 'temperature'];
+            const period = currentChartPeriod || 7;
+
+            if (period === 1) {
+                try {
+                    const now = new Date();
+                    const res = await fetch(`/api/history?type=all&days=1`);
+                    const hist = res.ok ? (await res.json())?.data : {};
+                    types.forEach(type => {
+                        if (!charts[type]) return;
+                        const labels = getXAxisLabels(1);
+                        const rawArr = hist[type] || [];
+                        const count = {};
+                        rawArr.forEach(h => {
+                            const hour = new Date(h.timestamp).getHours();
+                            let v = parseFloat(h.value) || 0;
+                            if (type === 'gas') v *= 0.5;
+                            else if (type === 'water') v *= 0.1;
+                            else if (type === 'electricity') v *= 0.01;
+                            if (!count[hour]) count[hour] = { s: 0, n: 0 };
+                            count[hour].s += v;
+                            count[hour].n++;
+                        });
+                        const values = labels.slice(0, -1).map((_, i) => {
+                            if (i < now.getHours()) return count[i] ? (count[i].s / count[i].n) : 0;
+                            let currentVal = type === 'temperature' ? (parseFloat(sensorData.temperature?.current) || 0) : (parseFloat(sensorData[type]?.current) || 0);
+                            return currentVal || (count[now.getHours()] ? (count[now.getHours()].s / count[now.getHours()].n) : 0);
+                        });
+                        values.push(null);
+                        charts[type].data.labels = labels;
+                        charts[type].data.datasets[0].data = values;
+                        if (type === 'temperature') {
+                            const opt = values.slice(0, -1).map(() => CONFIG.TARGETS.temperature.optimal);
+                            opt.push(null);
+                            charts[type].data.datasets[1].data = opt;
+                        }
+                        const currentVal = type === 'temperature' ? (sensorData.temperature?.current || 0) : parseFloat(sensorData[type]?.current) || 0;
+                        const allV = values.filter(v => v != null && !isNaN(v));
+                        const maxV = Math.max(...allV, currentVal, 0.1);
+                        const minV = type === 'temperature' ? Math.min(...allV, currentVal, 100) : 0;
+                        charts[type].options.scales.y.min = Math.max(0, minV - (maxV - minV) * 0.1);
+                        charts[type].options.scales.y.max = maxV + (maxV - minV) * 0.15;
+                        charts[type].data.datasets[0].spanGaps = true;
+                        if (charts[type].options.scales?.x) {
+                            charts[type].options.scales.x.max = labels.length - 1;
+                        }
+                        charts[type].update();
+                    });
+                } catch (e) { console.warn('שגיאה בעדכון גרפים:', e); }
+            } else {
+                const labels = getXAxisLabels(period);
+                types.forEach(type => {
+                    if (!charts[type]) return;
+                    const daily = sensorData[type]?.daily || [];
+                    const typeData = daily.slice(-period);
+                    let values = typeData.map(d => parseFloat(d.value) || 0);
+                    while (values.length < period) values.unshift(0);
+                    values = values.slice(-period);
+                    values.push(null);
+                    charts[type].data.labels = labels;
+                    charts[type].data.datasets[0].data = values;
+                    if (type === 'temperature') {
+                        const optData = values.slice(0, -1).map(() => CONFIG.TARGETS.temperature.optimal);
+                        optData.push(null);
+                        charts[type].data.datasets[1].data = optData;
+                    }
+                    const currentVal = type === 'temperature' ? (sensorData.temperature?.current || 0) : parseFloat(sensorData[type]?.current) || 0;
+                    const allV = values.filter(v => v != null && !isNaN(v));
+                    const maxV = allV.length ? Math.max(...allV, currentVal, 0.1) : Math.max(currentVal, 1);
+                    const minV = type === 'temperature' && allV.length ? Math.min(...allV, currentVal) : 0;
+                    charts[type].options.scales.y.min = Math.max(0, minV - (maxV - minV) * 0.1);
+                    charts[type].options.scales.y.max = maxV + (maxV - minV) * 0.15 || maxV * 1.15;
+                    charts[type].update();
+                });
+            }
+
+            if (charts.comparison) {
+                const gasPercent = (sensorData.gas.monthly / CONFIG.TARGETS.gas) * 100;
+                const waterPercent = (sensorData.water.monthly / CONFIG.TARGETS.water) * 100;
+                const elecPercent = (sensorData.electricity.monthly / CONFIG.TARGETS.electricity) * 100;
+                const tempPercent = (sensorData.temperature.average / CONFIG.TARGETS.temperature.optimal) * 100;
+                charts.comparison.data.datasets[0].data = [Math.min(gasPercent, 150), Math.min(waterPercent, 150), Math.min(elecPercent, 150), Math.min(tempPercent, 150)];
+                charts.comparison.update();
+            }
+            // Update watt real-time chart when visible
+            if (document.getElementById('wattChartWrapper')?.classList.contains('active')) {
+                updateWattChart();
+            }
+            updateStatistics();
+        }
+
+        function updateStatistics() {
+            const prevMonth = { gas: CONFIG.TARGETS.gas * 0.9, water: CONFIG.TARGETS.water * 0.85, electricity: CONFIG.TARGETS.electricity * 0.95 };
+            const gasChange = ((sensorData.gas.monthly - prevMonth.gas) / prevMonth.gas * 100).toFixed(1);
+            const waterChange = ((sensorData.water.monthly - prevMonth.water) / prevMonth.water * 100).toFixed(1);
+            const elecChange = ((sensorData.electricity.monthly - prevMonth.electricity) / prevMonth.electricity * 100).toFixed(1);
+
+            document.getElementById('gasCompare').textContent = `${sensorData.gas.monthly} m³`;
+            document.getElementById('gasChange').textContent = `${gasChange > 0 ? '+' : ''}${gasChange}%`;
+            document.getElementById('gasChange').className = `stat-change ${gasChange > 0 ? 'positive' : 'negative'}`;
+            document.getElementById('waterCompare').textContent = `${sensorData.water.monthly} m³`;
+            document.getElementById('waterChange').textContent = `${waterChange > 0 ? '+' : ''}${waterChange}%`;
+            document.getElementById('waterChange').className = `stat-change ${waterChange > 0 ? 'positive' : 'negative'}`;
+            document.getElementById('electricityCompare').textContent = `${sensorData.electricity.monthly} kWh`;
+            document.getElementById('electricityChange').textContent = `${elecChange > 0 ? '+' : ''}${elecChange}%`;
+            document.getElementById('electricityChange').className = `stat-change ${elecChange > 0 ? 'positive' : 'negative'}`;
+            document.getElementById('tempCompare').textContent = `${sensorData.temperature.average}°C`;
+            const tempStatus = sensorData.temperature.average >= CONFIG.TARGETS.temperature.min && sensorData.temperature.average <= CONFIG.TARGETS.temperature.max ? 'תקין' : 'חריג';
+            document.getElementById('tempChange').textContent = tempStatus;
+            document.getElementById('tempChange').className = `stat-change ${tempStatus === 'תקין' ? 'negative' : 'positive'}`;
+        }
+
+        // Charts Modal
+        function toggleChartsModal() {
+            const modal = document.getElementById('chartsModal');
+            const isOpening = !modal.classList.contains('active');
+            modal.classList.toggle('active');
+            
+            // Update charts when opening
+            if (isOpening) {
+                setTimeout(() => {
+                    updateCharts();
+                    // Resize charts to fit modal
+                    Object.values(charts).forEach(chart => {
+                        if (chart) chart.resize();
+                    });
+                }, 100);
+            }
+        }
+
+        // Close modal on overlay click
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('chartsModal');
+            if (e.target === modal) {
+                toggleChartsModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('chartsModal');
+                if (modal.classList.contains('active')) {
+                    toggleChartsModal();
+                }
+            }
+        });
+
+        function switchChart(type, btn) {
+            document.querySelectorAll('.chart-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.chart-wrapper').forEach(wrapper => wrapper.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const wrapper = document.getElementById(`${type}ChartWrapper`);
+            if (wrapper) wrapper.classList.add('active');
+            
+            // Resize chart after switching
+            if (charts[type]) {
+                setTimeout(() => {
+                    charts[type].resize();
+                    if (type === 'watt') updateWattChart();
+                }, 50);
+            }
+        }
+
+        function changePeriod(days, btn) {
+            currentChartPeriod = days;
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            
+            // Reset chart scales and update
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.options && chart.options.scales) {
+                    // Reset Y axis to recalculate min/max
+                    if (chart.options.scales.y) {
+                        chart.options.scales.y.min = undefined;
+                        chart.options.scales.y.max = undefined;
+                    }
+                    chart.update('none'); // Reset without animation first
+                }
+            });
+            
+            updateCharts();
+            console.log(`📊 תקופת גרף שונתה ל-${days} ימים`);
+        }
+
+        // Settings
+        async function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            if (panel) {
+                const isOpening = !panel.classList.contains('active');
+                panel.classList.toggle('active');
+                
+                // Load fresh settings from server when opening
+                if (isOpening) {
+                    await loadServerSettings();
+                    console.log('📋 CONFIG.tuya:', CONFIG.tuya);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('settingsBtn');
+            if (btn) {
+                btn.addEventListener('click', toggleSettings);
+                btn.addEventListener('touchend', function(e) { e.preventDefault(); toggleSettings(); });
+            }
+        });
+
+        function switchSettingsTab(tabName, btn) {
+            document.querySelectorAll('.settings-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.settings-content').forEach(content => content.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.getElementById(`${tabName}Settings`).classList.add('active');
+        }
+
+        async function saveSettings() {
+            const settings = {
+                TARGETS: { 
+                    gas: parseFloat(document.getElementById('gasTargetInput')?.value) || 50, 
+                    water: parseFloat(document.getElementById('waterTargetInput')?.value) || 15, 
+                    electricity: parseFloat(document.getElementById('electricityTargetInput')?.value) || 500, 
+                    temperature: CONFIG.TARGETS.temperature 
+                },
+                ALERTS_ENABLED: document.getElementById('alertsEnabled')?.checked ?? true,
+                TEMP_ALERT_LOW: parseFloat(document.getElementById('tempAlertLow')?.value) || 55,
+                TEMP_ALERT_HIGH: parseFloat(document.getElementById('tempAlertHigh')?.value) || 65,
+                UPDATE_INTERVAL: CONFIG.UPDATE_INTERVAL || 5000,
+                tuya: { 
+                    accessId: document.getElementById('tuyaAccessId')?.value?.trim() || '', 
+                    accessSecret: document.getElementById('tuyaAccessSecret')?.value?.trim() || '', 
+                    devices: { 
+                        GAS: document.getElementById('gasDeviceId')?.value?.trim() || '', 
+                        WATER: document.getElementById('waterDeviceId')?.value?.trim() || '', 
+                        ELECTRICITY: document.getElementById('electricityDeviceId')?.value?.trim() || '', 
+                        TEMPERATURE: document.getElementById('temperatureDeviceId')?.value?.trim() || '' 
+                    } 
+                }
+            };
+            
+            console.log('💾 שומר הגדרות:', JSON.stringify(settings, null, 2));
+            
+            // Save to server
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // Update local CONFIG
+                    CONFIG.TARGETS = settings.TARGETS;
+                    CONFIG.ALERTS_ENABLED = settings.ALERTS_ENABLED ?? true;
+                    CONFIG.TEMP_ALERT_LOW = settings.TEMP_ALERT_LOW ?? 55;
+                    CONFIG.TEMP_ALERT_HIGH = settings.TEMP_ALERT_HIGH ?? 65;
+                    CONFIG.UPDATE_INTERVAL = settings.UPDATE_INTERVAL;
+                    CONFIG.tuya = settings.tuya;
+                    
+                    // Update UI targets
+                    document.getElementById('gasTarget').textContent = CONFIG.TARGETS.gas;
+                    document.getElementById('waterTarget').textContent = CONFIG.TARGETS.water;
+                    document.getElementById('electricityTarget').textContent = CONFIG.TARGETS.electricity;
+                    
+                    showToast('success', 'הגדרות נשמרו', 'ההגדרות נשמרו בשרת - מעדכן חיבורים...');
+                    
+                    // Wait for server to reinitialize Tuya connection
+                    setTimeout(async () => {
+                        await fetchServerData();
+                        checkSensorConnectivity();
+                        updateDisplay();
+                    }, 2000);
+                    
+                } else {
+                    throw new Error(result.message || 'שגיאה בשמירה');
+                }
+            } catch (e) {
+                console.error('שגיאה בשמירת הגדרות:', e);
+                showToast('error', 'שגיאה', 'לא ניתן לשמור הגדרות בשרת: ' + e.message);
+            }
+            toggleSettings();
+        }
+
+        async function loadServerSettings() {
+            try {
+                console.log('🔄 טוען הגדרות מהשרת...');
+                const response = await fetch('/api/settings');
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('📥 תגובת שרת:', result);
+                    
+                    if (result.success && result.settings) {
+                        const serverSettings = result.settings;
+                        
+                        // Update CONFIG with server settings
+                        if (serverSettings.tuya) {
+                            CONFIG.tuya = {
+                                accessId: serverSettings.tuya.accessId || '',
+                                accessSecret: serverSettings.tuya.accessSecret || '',
+                                devices: { ...serverSettings.tuya.devices }
+                            };
+                            console.log('✅ הגדרות Tuya נטענו:', CONFIG.tuya);
+                        }
+                        
+                        // Update targets if available
+                        if (serverSettings.TARGETS) {
+                            Object.assign(CONFIG.TARGETS, serverSettings.TARGETS);
+                        }
+                        if (serverSettings.ALERTS_ENABLED !== undefined) CONFIG.ALERTS_ENABLED = serverSettings.ALERTS_ENABLED;
+                        if (serverSettings.TEMP_ALERT_LOW !== undefined) CONFIG.TEMP_ALERT_LOW = serverSettings.TEMP_ALERT_LOW;
+                        if (serverSettings.TEMP_ALERT_HIGH !== undefined) CONFIG.TEMP_ALERT_HIGH = serverSettings.TEMP_ALERT_HIGH;
+                        
+                        populateSettingsForm();
+                    }
+                } else {
+                    console.log('⚠️ שגיאה בטעינת הגדרות:', response.status);
+                }
+            } catch (e) {
+                console.error('❌ לא ניתן לטעון הגדרות מהשרת:', e);
+            }
+        }
+
+        function populateSettingsForm() {
+            console.log('📝 מאכלס טופס הגדרות...');
+            
+            // Targets
+            const gasTarget = document.getElementById('gasTargetInput');
+            const waterTarget = document.getElementById('waterTargetInput');
+            const elecTarget = document.getElementById('electricityTargetInput');
+            
+            if (gasTarget) gasTarget.value = CONFIG.TARGETS.gas;
+            if (waterTarget) waterTarget.value = CONFIG.TARGETS.water;
+            if (elecTarget) elecTarget.value = CONFIG.TARGETS.electricity;
+            
+            const alertsEnabled = document.getElementById('alertsEnabled');
+            const tempAlertLow = document.getElementById('tempAlertLow');
+            const tempAlertHigh = document.getElementById('tempAlertHigh');
+            if (alertsEnabled) alertsEnabled.checked = CONFIG.ALERTS_ENABLED !== false;
+            if (tempAlertLow) tempAlertLow.value = CONFIG.TEMP_ALERT_LOW ?? 55;
+            if (tempAlertHigh) tempAlertHigh.value = CONFIG.TEMP_ALERT_HIGH ?? 65;
+            
+            // Tuya settings
+            if (CONFIG.tuya) {
+                const accessId = document.getElementById('tuyaAccessId');
+                const accessSecret = document.getElementById('tuyaAccessSecret');
+                const gasDevice = document.getElementById('gasDeviceId');
+                const waterDevice = document.getElementById('waterDeviceId');
+                const elecDevice = document.getElementById('electricityDeviceId');
+                const tempDevice = document.getElementById('temperatureDeviceId');
+                
+                if (accessId) accessId.value = CONFIG.tuya.accessId || '';
+                if (accessSecret) accessSecret.value = CONFIG.tuya.accessSecret || '';
+                
+                // Device IDs - check both uppercase and lowercase keys
+                const devices = CONFIG.tuya.devices || {};
+                if (gasDevice) gasDevice.value = devices.GAS || devices.gas || '';
+                if (waterDevice) waterDevice.value = devices.WATER || devices.water || '';
+                if (elecDevice) elecDevice.value = devices.ELECTRICITY || devices.electricity || '';
+                if (tempDevice) tempDevice.value = devices.TEMPERATURE || devices.temperature || '';
+                
+                console.log('📋 Device IDs loaded:', {
+                    electricity: devices.ELECTRICITY || devices.electricity || '(empty)',
+                    temperature: devices.TEMPERATURE || devices.temperature || '(empty)',
+                    gas: devices.GAS || devices.gas || '(empty)',
+                    water: devices.WATER || devices.water || '(empty)'
+                });
+            } else {
+                console.log('⚠️ CONFIG.tuya is not defined');
+            }
+        }
+
+        function exportData() {
+            const exportObj = { sensorData, alerts, settings: CONFIG, exportDate: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sensor_export_dev1_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('success', 'ייצוא הושלם', 'הנתונים יוצאו בהצלחה');
+        }
+
+        // UI Functions
+        function updateDateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            document.getElementById('datetime').textContent = now.toLocaleDateString('he-IL', options);
+        }
+
+        function updateGauge(gaugeId, percentage) {
+            const circumference = 251.2;
+            const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+            const gauge = document.getElementById(gaugeId);
+            if (gauge) gauge.style.strokeDashoffset = offset;
+        }
+
+        function updateDisplay() {
+            try {
+                const timeStr = new Date().toLocaleTimeString('he-IL');
+
+                const gasVal = document.getElementById('gasValue');
+                if (gasVal) gasVal.textContent = sensorData.gas.current || '0.0';
+                const gasMonthly = document.getElementById('gasMonthly');
+                if (gasMonthly) gasMonthly.textContent = `${sensorData.gas.monthly || 0} m³`;
+                const gasPercent = Math.min(100, ((sensorData.gas.monthly || 0) / CONFIG.TARGETS.gas) * 100);
+                const gasBar = document.getElementById('gasProgressBar');
+                if (gasBar) gasBar.style.width = `${gasPercent}%`;
+                const gasPct = document.getElementById('gasPercent');
+                if (gasPct) gasPct.textContent = `${gasPercent.toFixed(0)}%`;
+                const gasUpdate = document.getElementById('gasLastUpdate');
+                if (gasUpdate) gasUpdate.textContent = timeStr;
+                updateGauge('gasGauge', gasPercent);
+
+                const waterVal = document.getElementById('waterValue');
+                if (waterVal) waterVal.textContent = sensorData.water.current || '0.0';
+                const waterMonthly = document.getElementById('waterMonthly');
+                if (waterMonthly) waterMonthly.textContent = `${sensorData.water.monthly || 0} m³`;
+                const waterPercent = Math.min(100, ((sensorData.water.monthly || 0) / CONFIG.TARGETS.water) * 100);
+                const waterBar = document.getElementById('waterProgressBar');
+                if (waterBar) waterBar.style.width = `${waterPercent}%`;
+                const waterPct = document.getElementById('waterPercent');
+                if (waterPct) waterPct.textContent = `${waterPercent.toFixed(0)}%`;
+                const waterUpdate = document.getElementById('waterLastUpdate');
+                if (waterUpdate) waterUpdate.textContent = timeStr;
+                updateGauge('waterGauge', waterPercent);
+
+                const elecVal = document.getElementById('electricityValue');
+                if (elecVal) elecVal.textContent = sensorData.electricity.current || 0;
+                const elecMonthly = document.getElementById('electricityMonthly');
+                if (elecMonthly) elecMonthly.textContent = `${sensorData.electricity.monthly || 0} kWh`;
+                const elecPercent = Math.min(100, ((sensorData.electricity.monthly || 0) / CONFIG.TARGETS.electricity) * 100);
+                const elecBar = document.getElementById('electricityProgressBar');
+                if (elecBar) elecBar.style.width = `${elecPercent}%`;
+                const elecPct = document.getElementById('electricityPercent');
+                if (elecPct) elecPct.textContent = `${elecPercent.toFixed(0)}%`;
+                const elecUpdate = document.getElementById('electricityLastUpdate');
+                if (elecUpdate) elecUpdate.textContent = timeStr;
+                updateGauge('electricityGauge', elecPercent);
+
+                const tempVal = document.getElementById('temperatureValue');
+                if (tempVal) tempVal.textContent = sensorData.temperature.current || 0;
+                const tempAvg = document.getElementById('temperatureAvg');
+                if (tempAvg) tempAvg.textContent = `${sensorData.temperature.average || 0}°C`;
+                const tempPercent = Math.min(100, ((sensorData.temperature.current || 0) / 80) * 100);
+                const tempBar = document.getElementById('temperatureProgressBar');
+                if (tempBar) tempBar.style.width = `${tempPercent}%`;
+                const temp = sensorData.temperature.current || 0;
+                let tempStatus = '✅ תקין';
+                if (temp < CONFIG.TARGETS.temperature.min) tempStatus = '❄️ קר';
+                else if (temp > CONFIG.TARGETS.temperature.max) tempStatus = '🔥 חם';
+                const tempStatusEl = document.getElementById('temperatureStatus');
+                if (tempStatusEl) tempStatusEl.textContent = tempStatus;
+                const tempUpdate = document.getElementById('temperatureLastUpdate');
+                if (tempUpdate) tempUpdate.textContent = timeStr;
+                updateGauge('temperatureGauge', tempPercent);
+            } catch(e) {
+                console.error('שגיאה בעדכון תצוגה:', e);
+            }
+        }
+
+        // Server Data Fetch
+        async function fetchServerData() {
+            try {
+                const response = await fetch('/api/sensors');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        sensorData = result.data;
+                        updateDisplay();
+                        console.log('✅ DEV1: נתונים התקבלו מהשרת');
+                    }
+                } else {
+                    console.log('⚠️ DEV1: שגיאה בקבלת נתונים מהשרת');
+                }
+            } catch (e) {
+                console.log('❌ DEV1: לא ניתן להתחבר לשרת:', e.message);
+            }
+        }
+
+        // Initialization
+        async function init() {
+            console.log('🚀 מאתחל דשבורד חיישנים DEV1...');
+            console.log('📁 תיקייה: Sensor_Dashboard_Dev1');
+            console.log('🔌 פורט: 3002');
+            
+            // Always dark mode
+            applyTheme('dark');
+            
+            updateDateTime();
+            await loadServerSettings();
+            await fetchServerData(); // Wait for data before checking alerts
+            
+            setTimeout(() => {
+                try {
+                    if (typeof Chart !== 'undefined') { initCharts(); updateCharts(); }
+                    else { console.log('Chart.js לא נטען - גרפים מושבתים'); }
+                } catch(e) { console.log('שגיאה בגרפים:', e); }
+            }, 500);
+            
+            // Check alerts only after data is loaded
+            setTimeout(() => {
+                try { checkAlerts(); updateAlertsUI(); } catch(e) {}
+            }, 1000);
+            
+            setInterval(updateDateTime, 1000);
+            setInterval(() => { fetchServerData(); try { checkAlerts(); } catch(e) {} }, 5000);
+            setInterval(() => { try { if (typeof Chart !== 'undefined') { updateCharts(); } } catch(e) {} }, 30000);
+            
+            console.log('✅ דשבורד DEV1 מוכן!');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        window.onload = function() {
+            if (!window.dashboardInitialized) {
+                window.dashboardInitialized = true;
+                try { fetchServerData(); } catch(e) {}
+            }
+        };
+
+        console.log('⚠️ Service Worker מושבת');
+    </script>
+</body>
+</html>
