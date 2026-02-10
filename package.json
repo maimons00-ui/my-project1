@@ -1,0 +1,22 @@
+{
+  "name": "sensor-dashboard-tuya",
+  "version": "1.0.0",
+  "description": "דשבורד חיישנים לטאבלט עם תמיכה ב-Tuya WiFi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "tuya",
+    "sensors",
+    "dashboard",
+    "smart-home",
+    "iot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
