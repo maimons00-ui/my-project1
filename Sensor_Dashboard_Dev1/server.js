@@ -743,15 +743,45 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
+    // Security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
         return;
     }
 
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    let url;
+    try {
+        url = new URL(req.url, `http://${req.headers.host}`);
+    } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'כתובת URL לא תקינה' }));
+        return;
+    }
     
     // API Routes
+    if (url.pathname === '/api/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+            success: true,
+            status: 'running',
+            version: 'dev1',
+            uptime: process.uptime(),
+            tuyaConnected: !!tuyaClient,
+            configuredDevices: {
+                gas: !!CONFIG.TUYA.DEVICES.GAS,
+                water: !!CONFIG.TUYA.DEVICES.WATER,
+                electricity: !!CONFIG.TUYA.DEVICES.ELECTRICITY,
+                temperature: !!CONFIG.TUYA.DEVICES.TEMPERATURE
+            },
+            timestamp: new Date().toISOString()
+        }));
+        return;
+    }
+    
     if (url.pathname === '/api/sensors') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({
@@ -765,7 +795,15 @@ const server = http.createServer(async (req, res) => {
     
     if (url.pathname === '/api/history') {
         const type = url.searchParams.get('type') || 'all';
-        const days = parseInt(url.searchParams.get('days')) || 7;
+        const days = Math.min(Math.max(parseInt(url.searchParams.get('days')) || 7, 1), 90);
+        
+        // Validate type parameter
+        const validTypes = ['all', 'gas', 'water', 'electricity', 'temperature'];
+        if (!validTypes.includes(type)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: 'סוג חיישן לא תקין' }));
+            return;
+        }
         
         const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
         
@@ -792,8 +830,19 @@ const server = http.createServer(async (req, res) => {
     
     if (url.pathname === '/api/settings' && req.method === 'POST') {
         let body = '';
-        req.on('data', chunk => body += chunk);
+        let bodyTooLarge = false;
+        const MAX_BODY_SIZE = 10 * 1024; // 10KB limit
+        req.on('data', chunk => {
+            body += chunk;
+            if (body.length > MAX_BODY_SIZE) {
+                bodyTooLarge = true;
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: false, error: 'גוף הבקשה גדול מדי' }));
+                req.destroy();
+            }
+        });
         req.on('end', () => {
+            if (bodyTooLarge) return;
             try {
                 const newSettings = JSON.parse(body);
                 console.log('📥 מקבל הגדרות חדשות:', JSON.stringify(newSettings, null, 2));
@@ -905,6 +954,13 @@ const server = http.createServer(async (req, res) => {
     let filePath = url.pathname === '/' ? '/sensor_dashboard.html' : url.pathname;
     filePath = path.join(__dirname, filePath);
     
+    // Path traversal protection
+    if (!filePath.startsWith(__dirname)) {
+        res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<h1>403 - גישה נדחתה</h1>', 'utf-8');
+        return;
+    }
+    
     const extname = path.extname(filePath);
     const contentTypes = {
         '.html': 'text/html; charset=utf-8',
@@ -966,11 +1022,21 @@ function start() {
     server.listen(CONFIG.PORT, '0.0.0.0', () => {
         console.log(`✓ שרת פועל בכתובת: http://localhost:${CONFIG.PORT}`);
         console.log(`✓ API זמין ב: http://localhost:${CONFIG.PORT}/api/sensors`);
+        console.log(`✓ בדיקת בריאות: http://localhost:${CONFIG.PORT}/api/health`);
         console.log('================================');
         console.log('💡 לחיבור Tuya, הגדר את המשתנים:');
         console.log('   TUYA_ACCESS_ID, TUYA_ACCESS_SECRET');
         console.log('   ו-Device IDs לכל חיישן');
         console.log('================================');
+    });
+    
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`❌ פורט ${CONFIG.PORT} תפוס! נסה לסגור את התהליך שמשתמש בו או שנה את הפורט.`);
+        } else {
+            console.error('❌ שגיאת שרת:', err.message);
+        }
+        process.exit(1);
     });
 }
 
