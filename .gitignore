@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Sensitive configuration (contains Tuya API keys)
+Sensor_Dashboard_Dev1/settings.json
+
+# Runtime data files
+Sensor_Dashboard_Dev1/sensor_data.json
+Sensor_Dashboard_Dev1/sensor_history.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
