@@ -47,12 +47,7 @@
           "locationAlwaysAndWhenInUsePermission": "האפליקציה צריכה את המיקום שלך כדי לחשב זמני שבת"
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "sounds": ["./assets/shabbat_bell.wav"]
-        }
-      ]
+      "expo-notifications"
     ]
   }
 }
