@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "התראת שבת",
+    "slug": "shabbat-alert",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a237e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "האפליקציה צריכה את המיקום שלך כדי לחשב את זמן כניסת השבת באזור שלך",
+        "NSLocationAlwaysUsageDescription": "האפליקציה צריכה גישה למיקום ברקע כדי לשלוח התראות שבת אוטומטיות",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+      },
+      "bundleIdentifier": "com.shabbat.alert"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a237e"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "POST_NOTIFICATIONS"
+      ],
+      "package": "com.shabbat.alert"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "האפליקציה צריכה את המיקום שלך כדי לחשב זמני שבת"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/shabbat_bell.wav"]
+        }
+      ]
+    ]
+  }
+}
