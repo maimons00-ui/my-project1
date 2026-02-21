@@ -34,7 +34,6 @@ export async function requestNotificationPermissions() {
       name: 'התראות שבת',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      sound: 'default',
       lightColor: '#FFD700',
     });
   }
@@ -53,13 +52,11 @@ export async function scheduleShabbatNotifications(shabbatTimes) {
       content: {
         title: '🕯️ שבת בעוד שעה!',
         body: `כניסת שבת בשעה ${formatHebrewTime(shabbatTimes.candleLighting)}\nהכינו את הנרות! 🕯️🕯️`,
-        sound: 'default',
-        priority: Notifications.AndroidNotificationPriority.HIGH,
         ...(Platform.OS === 'android' && { channelId: 'shabbat-alerts' }),
       },
       trigger: {
         type: 'date',
-        date: shabbatTimes.oneHourBefore,
+        date: shabbatTimes.oneHourBefore.getTime(),
       },
     });
     notifications.push({ id: oneHourId, type: 'one-hour-before' });
@@ -70,13 +67,11 @@ export async function scheduleShabbatNotifications(shabbatTimes) {
       content: {
         title: '🕯️ שבת שלום! 🕯️',
         body: `הגיע זמן הדלקת נרות שבת!\n${formatHebrewTime(shabbatTimes.candleLighting)}`,
-        sound: 'default',
-        priority: Notifications.AndroidNotificationPriority.MAX,
         ...(Platform.OS === 'android' && { channelId: 'shabbat-alerts' }),
       },
       trigger: {
         type: 'date',
-        date: shabbatTimes.candleLighting,
+        date: shabbatTimes.candleLighting.getTime(),
       },
     });
     notifications.push({ id: candleLightingId, type: 'candle-lighting' });
