@@ -205,6 +205,16 @@ export default function App() {
 
                 <View style={styles.timeRow}>
                   <View style={styles.timeBlock}>
+                    <Text style={styles.timeLabel}>🔔 התראה שנייה</Text>
+                    <Text style={styles.timeSubLabel}>5 דקות לפני</Text>
+                    <Text style={styles.timeValue}>{formatHebrewTime(shabbatTimes.fiveMinutesBefore)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.timeRow}>
+                  <View style={styles.timeBlock}>
                     <Text style={styles.timeLabel}>🕯️ הדלקת נרות</Text>
                     <Text style={styles.timeSubLabel}>כניסת שבת</Text>
                     <Text style={[styles.timeValue, styles.mainTime]}>
@@ -263,8 +273,8 @@ export default function App() {
             <Text style={styles.infoText}>
               📍 האפליקציה מזהה את המיקום שלך{'\n'}
               🧮 מחשבת את שעת כניסת השבת{'\n'}
-              🔔 מתריעה שעה לפני כניסת שבת{'\n'}
-              🕯️ מתריעה בזמן הדלקת נרות{'\n'}
+              🔔 התראה ראשונה: שעה לפני כניסת שבת{'\n'}
+              🕯️ התראה שנייה: 5 דקות לפני כניסת שבת{'\n'}
               ⚙️ הכל אוטומטי, בכל שישי!
             </Text>
           </View>

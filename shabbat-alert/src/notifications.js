@@ -51,7 +51,7 @@ export async function scheduleShabbatNotifications(shabbatTimes) {
     const oneHourId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🕯️ שבת בעוד שעה!',
-        body: `כניסת שבת בשעה ${formatHebrewTime(shabbatTimes.candleLighting)}\nהכינו את הנרות! 🕯️🕯️`,
+        body: `בעוד שעה נכנסת שבת בשעה ${formatHebrewTime(shabbatTimes.candleLighting)}`,
         ...(Platform.OS === 'android' && { channelId: 'shabbat-alerts' }),
       },
       trigger: {
@@ -62,19 +62,19 @@ export async function scheduleShabbatNotifications(shabbatTimes) {
     notifications.push({ id: oneHourId, type: 'one-hour-before' });
   }
 
-  if (shabbatTimes.candleLighting > now) {
-    const candleLightingId = await Notifications.scheduleNotificationAsync({
+  if (shabbatTimes.fiveMinutesBefore > now) {
+    const fiveMinId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🕯️ שבת שלום! 🕯️',
-        body: `הגיע זמן הדלקת נרות שבת!\n${formatHebrewTime(shabbatTimes.candleLighting)}`,
+        body: `שבת נכנסת בעוד 5 דקות בשעה ${formatHebrewTime(shabbatTimes.candleLighting)}`,
         ...(Platform.OS === 'android' && { channelId: 'shabbat-alerts' }),
       },
       trigger: {
         type: 'date',
-        date: shabbatTimes.candleLighting.getTime(),
+        date: shabbatTimes.fiveMinutesBefore.getTime(),
       },
     });
-    notifications.push({ id: candleLightingId, type: 'candle-lighting' });
+    notifications.push({ id: fiveMinId, type: 'five-minutes-before' });
   }
 
   return notifications;

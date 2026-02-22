@@ -92,6 +92,7 @@ export function getShabbatTimes(latitude, longitude, fridayDate = null) {
     sunset,
     candleLighting,
     oneHourBefore: new Date(candleLighting.getTime() - 60 * 60 * 1000),
+    fiveMinutesBefore: new Date(candleLighting.getTime() - 5 * 60 * 1000),
   };
 }
 
